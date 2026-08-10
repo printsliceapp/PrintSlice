@@ -226,11 +226,103 @@
     #viewerWrap{ height:42vh; min-height:200px; border-radius:12px; }
     .dropzone{ padding:18px 12px; }
   }
+
+  /* ---- auth / paywall gate ---- */
+  #authGate{
+    position:fixed; inset:0; z-index:500; display:flex; align-items:center; justify-content:center;
+    background:#121110; padding:20px;
+  }
+  #authGate[hidden]{ display:none; }
+  .auth-card{
+    width:min(380px, 100%); background:var(--paper); border:1px solid var(--line);
+    border-radius:var(--radius); box-shadow:var(--shadow-lg); padding:26px 24px;
+  }
+  .auth-card .brand{ margin-bottom:18px; }
+  .auth-card h2{ font-size:16px; margin:0 0 4px; color:var(--ink); }
+  .auth-card p.sub{ font-size:12.5px; color:var(--ink-soft); margin:0 0 18px; }
+  .auth-card input[type=email], .auth-card input[type=password]{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:9px;
+    font-size:13.5px; color:var(--ink); background:var(--paper-soft); margin-bottom:10px;
+  }
+  .auth-card input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(227,93,69,.2); }
+  .auth-msg{ font-size:12px; margin:8px 0 0; min-height:16px; }
+  .auth-msg.err{ color:var(--bad); }
+  .auth-msg.ok{ color:var(--ok); }
+  .auth-switch{ text-align:center; font-size:12.5px; color:var(--ink-soft); margin-top:14px; }
+  .auth-switch a{ color:var(--accent2); cursor:pointer; text-decoration:none; font-weight:600; }
+  .auth-switch a:hover{ text-decoration:underline; }
+  .auth-loading{ color:var(--ink-soft); font-size:13px; text-align:center; }
+
+  .paywall-price{ font-size:34px; font-weight:800; color:var(--ink); margin:4px 0 2px; }
+  .paywall-price span{ font-size:13px; font-weight:600; color:var(--ink-faint); }
+  .paywall-features{ list-style:none; padding:0; margin:16px 0; font-size:13px; color:var(--ink-soft); }
+  .paywall-features li{ padding:5px 0 5px 22px; position:relative; }
+  .paywall-features li::before{ content:"✓"; position:absolute; left:0; color:var(--accent); font-weight:800; }
+
+  #accountBar{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    font-size:11.5px; color:var(--ink-faint); margin:-6px 0 16px; padding-bottom:14px;
+    border-bottom:1px solid var(--line);
+  }
+  #accountBar button{ width:auto; margin:0; padding:5px 10px; font-size:11px; }
 </style>
 </head>
 <body>
-<div id="app">
+<div id="authGate">
+  <div class="auth-card" id="authCardLoading">
+    <div class="auth-loading">Loading…</div>
+  </div>
+
+  <div class="auth-card" id="authCardLogin" hidden>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20">
+          <path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M3 7l9 5 9-5M12 12v10" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h1 style="font-size:16px;">PrintSlice</h1>
+    </div>
+    <h2 id="authFormTitle">Log in</h2>
+    <p class="sub" id="authFormSub">Welcome back — log in to your account.</p>
+    <input type="email" id="authEmail" placeholder="Email" autocomplete="email">
+    <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
+    <button class="btn-primary" id="authSubmitBtn">Log in</button>
+    <div class="auth-msg" id="authMsg"></div>
+    <div class="auth-switch" id="authSwitch">Don't have an account? <a id="authSwitchLink">Sign up</a></div>
+  </div>
+
+  <div class="auth-card" id="authCardPaywall" hidden>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20">
+          <path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M3 7l9 5 9-5M12 12v10" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h1 style="font-size:16px;">PrintSlice Pro</h1>
+    </div>
+    <p class="sub">You're logged in as <b id="paywallEmail" style="color:var(--ink)"></b>. Subscribe to unlock the tool.</p>
+    <div class="paywall-price">$9<span>/month</span></div>
+    <ul class="paywall-features">
+      <li>Unlimited STL splits</li>
+      <li>Real CSG connector generation</li>
+      <li>Cancel anytime</li>
+    </ul>
+    <button class="btn-primary" id="subscribeBtn">Subscribe</button>
+    <button class="btn-secondary" id="paywallLogoutBtn" style="margin-top:8px;">Log out</button>
+    <div class="auth-msg" id="paywallMsg"></div>
+  </div>
+</div>
+<div id="app" hidden>
   <div id="sidebar">
+    <div id="accountBar">
+      <span id="accountEmail"></span>
+      <div style="display:flex; gap:6px;">
+        <button class="btn-secondary" id="manageBillingBtn">Manage billing</button>
+        <button class="btn-secondary" id="logoutBtn">Log out</button>
+      </div>
+    </div>
     <div class="brand">
       <div class="brand-icon">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -344,6 +436,194 @@
 </div>
 
 <a id="hiddenLink" class="hidden-link"></a>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ---------------------------------------------------------------------
+// Auth + subscription gate. Runs before the main app script below and
+// controls whether #authGate or #app is shown. The main app script is
+// completely unaware of any of this — it just runs once #app becomes
+// visible, exactly as it always did.
+//
+// SUPABASE_URL and SUPABASE_ANON_KEY are PUBLIC values (the anon key is
+// designed to be exposed client-side — real protection comes from the
+// Row Level Security policy in supabase-schema.sql, which only lets a
+// user read their OWN subscription row, and from the fact that only the
+// server-side webhook function can ever WRITE to that table). Fill these
+// in from your Supabase project's Settings -> API page.
+// ---------------------------------------------------------------------
+const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL"; // e.g. https://xxxxx.supabase.co
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+
+const authGate = document.getElementById("authGate");
+const appEl = document.getElementById("app");
+const cardLoading = document.getElementById("authCardLoading");
+const cardLogin = document.getElementById("authCardLogin");
+const cardPaywall = document.getElementById("authCardPaywall");
+const authEmail = document.getElementById("authEmail");
+const authPassword = document.getElementById("authPassword");
+const authMsg = document.getElementById("authMsg");
+const authFormTitle = document.getElementById("authFormTitle");
+const authFormSub = document.getElementById("authFormSub");
+const authSubmitBtn = document.getElementById("authSubmitBtn");
+const authSwitchLink = document.getElementById("authSwitchLink");
+let authMode = "login"; // 'login' | 'signup'
+
+function showCard(card){
+  [cardLoading, cardLogin, cardPaywall].forEach(c => c.hidden = (c !== card));
+}
+
+// A placeholder config would make Supabase's client constructor throw
+// synchronously, silently killing every line of script after it — leaving
+// the page stuck on "Loading…" forever with no indication why. That's a
+// bad failure mode for local testing/setup, so it's checked explicitly and
+// reported clearly instead.
+if (SUPABASE_URL.startsWith("YOUR_") || SUPABASE_ANON_KEY.startsWith("YOUR_")){
+  cardLoading.innerHTML =
+    '<div class="auth-loading" style="text-align:left;">' +
+    '<b style="color:var(--ink);">Not configured yet.</b><br><br>' +
+    'Open <code>index.html</code> and fill in <code>SUPABASE_URL</code> and ' +
+    '<code>SUPABASE_ANON_KEY</code> near the top of the auth script ' +
+    '(find them in your Supabase project’s Settings → API page), ' +
+    'then reload this page.</div>';
+  throw new Error("PrintSlice: Supabase is not configured — see the message on screen.");
+}
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function setAuthMode(mode){
+  authMode = mode;
+  authMsg.textContent = "";
+  if (mode === "signup"){
+    authFormTitle.textContent = "Sign up";
+    authFormSub.textContent = "Create an account to get started.";
+    authSubmitBtn.textContent = "Sign up";
+    document.getElementById("authSwitch").innerHTML = 'Already have an account? <a id="authSwitchLink">Log in</a>';
+  } else {
+    authFormTitle.textContent = "Log in";
+    authFormSub.textContent = "Welcome back — log in to your account.";
+    authSubmitBtn.textContent = "Log in";
+    document.getElementById("authSwitch").innerHTML = "Don't have an account? <a id=\"authSwitchLink\">Sign up</a>";
+  }
+  document.getElementById("authSwitchLink").addEventListener("click", () => setAuthMode(mode === "signup" ? "login" : "signup"));
+}
+setAuthMode("login");
+
+authSubmitBtn.addEventListener("click", async () => {
+  const email = authEmail.value.trim();
+  const password = authPassword.value;
+  if (!email || !password){
+    authMsg.textContent = "Enter an email and password."; authMsg.className = "auth-msg err"; return;
+  }
+  authSubmitBtn.disabled = true;
+  authMsg.textContent = ""; authMsg.className = "auth-msg";
+  try {
+    if (authMode === "signup"){
+      const { error } = await sb.auth.signUp({ email, password });
+      if (error) throw error;
+      authMsg.textContent = "Check your email to confirm your account, then log in.";
+      authMsg.className = "auth-msg ok";
+      setAuthMode("login");
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      await refreshGate();
+    }
+  } catch (err) {
+    authMsg.textContent = err.message || "Something went wrong.";
+    authMsg.className = "auth-msg err";
+  } finally {
+    authSubmitBtn.disabled = false;
+  }
+});
+
+async function callFunction(name){
+  const { data: { session } } = await sb.auth.getSession();
+  const res = await fetch(`/.netlify/functions/${name}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session?.access_token || ""}` },
+  });
+  if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || "Request failed.");
+  return res.json();
+}
+
+document.getElementById("subscribeBtn").addEventListener("click", async (e) => {
+  const btn = e.target;
+  btn.disabled = true;
+  const msg = document.getElementById("paywallMsg");
+  msg.textContent = ""; msg.className = "auth-msg";
+  try {
+    const { url } = await callFunction("create-checkout-session");
+    window.location.href = url;
+  } catch (err) {
+    msg.textContent = err.message; msg.className = "auth-msg err";
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("manageBillingBtn").addEventListener("click", async () => {
+  try {
+    const { url } = await callFunction("create-portal-session");
+    window.location.href = url;
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+async function logout(){
+  await sb.auth.signOut();
+  await refreshGate();
+}
+document.getElementById("logoutBtn").addEventListener("click", logout);
+document.getElementById("paywallLogoutBtn").addEventListener("click", logout);
+
+// The actual gate: logged out -> login form. Logged in but not subscribed
+// -> paywall. Logged in and subscribed -> the real app. Subscription
+// status is read from Supabase (kept in sync by the Stripe webhook), never
+// trusted from anything computed in the browser.
+async function refreshGate(){
+  showCard(cardLoading);
+  authGate.hidden = false;
+  appEl.hidden = true;
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session){
+    showCard(cardLogin);
+    return;
+  }
+
+  const { data: sub } = await sb
+    .from("subscriptions")
+    .select("status")
+    .eq("user_id", session.user.id)
+    .maybeSingle();
+
+  const active = sub && (sub.status === "active" || sub.status === "trialing");
+  if (active){
+    authGate.hidden = true;
+    appEl.hidden = false;
+    document.getElementById("accountEmail").textContent = session.user.email;
+  } else {
+    document.getElementById("paywallEmail").textContent = session.user.email;
+    showCard(cardPaywall);
+  }
+}
+
+sb.auth.onAuthStateChange(() => refreshGate());
+refreshGate();
+
+// If Stripe just redirected back after a successful checkout, the webhook
+// may take a second or two to land — poll briefly rather than showing the
+// paywall again immediately.
+if (new URLSearchParams(window.location.search).get("checkout") === "success"){
+  let attempts = 0;
+  const poll = setInterval(async () => {
+    attempts++;
+    await refreshGate();
+    if (!appEl.hidden || attempts > 8) clearInterval(poll);
+  }, 1500);
+}
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>

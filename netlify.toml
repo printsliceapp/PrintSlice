@@ -1,0 +1,11 @@
+[build]
+  functions = "netlify/functions"
+  publish = "."
+
+[functions]
+  node_bundler = "esbuild"
+
+# Netlify's build step just needs `npm install` to fetch stripe + supabase-js
+# for the functions — there's no bundler/compile step for the static site itself.
+[build.environment]
+  NODE_VERSION = "20"
