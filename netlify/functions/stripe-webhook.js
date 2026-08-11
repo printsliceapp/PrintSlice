@@ -9,6 +9,10 @@
 // customer.subscription.deleted.
 const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
+// see create-checkout-session.js for why this is needed — Supabase's
+// client crashes on Netlify's Node 20 runtime without an explicit
+// WebSocket transport, even though this function never uses realtime.
+const ws = require('ws');
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -29,7 +33,8 @@ exports.handler = async (event) => {
 
   const supabaseAdmin = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { realtime: { transport: ws } }
   );
 
   async function upsertFromSubscription(subscription, fallbackUserId){

@@ -4,6 +4,13 @@
 // access token — never trusted from anything the client sends directly.
 const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
+// Supabase's client always sets up a realtime/WebSocket connection
+// internally, even though this function never uses it — Netlify's Node 20
+// functions runtime has no native WebSocket global, so without an explicit
+// transport it crashes every request with "Node.js 20 detected without
+// native WebSocket support" (confirmed by direct testing). Passing the
+// `ws` package in explicitly is the fix Supabase's own error suggests.
+const ws = require('ws');
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -18,7 +25,8 @@ exports.handler = async (event) => {
 
   const supabaseAdmin = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { realtime: { transport: ws } }
   );
   const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
   if (userErr || !userData?.user) {
