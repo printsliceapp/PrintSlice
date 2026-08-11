@@ -452,8 +452,8 @@
 // server-side webhook function can ever WRITE to that table). Fill these
 // in from your Supabase project's Settings -> API page.
 // ---------------------------------------------------------------------
-const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL"; // e.g. https://xxxxx.supabase.co
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+const SUPABASE_URL = "https://veyanovvkeirlayhxkav.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_XrMH5uYGeGZdUYvK4eTI2Q_40kHYrKX";
 
 const authGate = document.getElementById("authGate");
 const appEl = document.getElementById("app");
@@ -586,26 +586,43 @@ async function refreshGate(){
   authGate.hidden = false;
   appEl.hidden = true;
 
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session){
-    showCard(cardLogin);
-    return;
-  }
+  // Without this try/catch, any hiccup talking to Supabase (a rate limit,
+  // a dropped connection, anything) left the page stuck showing "Loading…"
+  // forever with no visible error — confirmed by direct testing. Every
+  // failure now shows a clear message with a way to retry instead of
+  // silently hanging.
+  try {
+    const { data: { session }, error: sessionErr } = await sb.auth.getSession();
+    if (sessionErr) throw sessionErr;
+    if (!session){
+      showCard(cardLogin);
+      return;
+    }
 
-  const { data: sub } = await sb
-    .from("subscriptions")
-    .select("status")
-    .eq("user_id", session.user.id)
-    .maybeSingle();
+    const { data: sub, error: subErr } = await sb
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    if (subErr) throw subErr;
 
-  const active = sub && (sub.status === "active" || sub.status === "trialing");
-  if (active){
-    authGate.hidden = true;
-    appEl.hidden = false;
-    document.getElementById("accountEmail").textContent = session.user.email;
-  } else {
-    document.getElementById("paywallEmail").textContent = session.user.email;
-    showCard(cardPaywall);
+    const active = sub && (sub.status === "active" || sub.status === "trialing");
+    if (active){
+      authGate.hidden = true;
+      appEl.hidden = false;
+      document.getElementById("accountEmail").textContent = session.user.email;
+    } else {
+      document.getElementById("paywallEmail").textContent = session.user.email;
+      showCard(cardPaywall);
+    }
+  } catch (err) {
+    console.error("refreshGate failed:", err);
+    cardLoading.innerHTML =
+      '<div class="auth-loading" style="text-align:left;">' +
+      '<b style="color:var(--bad);">Something went wrong loading your account.</b><br><br>' +
+      (err?.message || "Unknown error") + '<br><br>' +
+      '<button class="btn-secondary" id="gateRetryBtn" style="width:auto;">Retry</button></div>';
+    document.getElementById("gateRetryBtn").addEventListener("click", refreshGate);
   }
 }
 
