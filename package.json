@@ -5,6 +5,7 @@
   "description": "PrintSlice: STL bed splitter with connectors, gated by Stripe subscription + Supabase auth.",
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
-    "stripe": "^16.9.0"
+    "stripe": "^16.9.0",
+    "ws": "^8.18.0"
   }
 }
