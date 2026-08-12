@@ -123,6 +123,7 @@
 // Netlify Forms handles the actual submission/storage server-side (no
 // backend code needed for this) — this script just submits it via fetch
 // instead of a full page reload, so we can show an inline success message.
+// (Forced redeploy to re-trigger Netlify's form-detection scan.)
 const form = document.getElementById('contactForm');
 const statusEl = document.getElementById('contactStatus');
 const submitBtn = document.getElementById('contactSubmit');
