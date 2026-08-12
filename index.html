@@ -423,6 +423,7 @@
         <div class="hint">Rotate/pan/zoom to inspect the part. Click a marker to select it.</div>
         <div id="partPreviewSeamKey" class="ppm-seam-key"></div>
         <button id="partPreviewAddBtn" class="btn-primary" style="margin-top:10px;">+ Add Joining Point</button>
+        <div class="hint" style="margin-top:4px;">One connector per face — place a second one on a different face for a stronger join.</div>
         <div id="ppmSettings" class="ppm-settings" hidden>
           <div class="row">
             <div><label>Connector type</label>
@@ -3570,6 +3571,23 @@ function renderJointsList(){
 // only way this can still fail is 'piece-missing' — the male or female key
 // no longer existing (e.g. the model was reloaded/resplit mid-click).
 function tryAddJoint(axis, planeValue, dir, maleKey, femaleKey, p1, p2, orientedFrame, femaleGap){
+  // A face here means "this specific pair of pieces" — one connector
+  // between any given pair is plenty to hold them together, and each
+  // additional one placed on the same pair chains another CSG boolean onto
+  // an already-cut female piece, which is exactly the scenario that gets
+  // slow and can leave rough edges on complex organic geometry (see
+  // csgSubtractTriangles). Capping it here — the one choke point every
+  // placement path (axis-aligned seam click and organic-surface click
+  // alike) already runs through — avoids that entirely, rather than
+  // asking a user to judge for themselves how many is too many. Add a
+  // connector on a DIFFERENT pair of faces instead for extra strength.
+  const alreadyJoined = manualJoints.some(j => j.valid &&
+    ((j.maleKey === maleKey && j.femaleKey === femaleKey) || (j.maleKey === femaleKey && j.femaleKey === maleKey)));
+  if (alreadyJoined){
+    showJointMsg("This face already has a connector — one per face is enough to hold the pieces together. Add the next one on a different face.", true);
+    return;
+  }
+
   const sz = Math.max(2, parseFloat(tabSizeInput.value)||8);
   const depth = Math.max(1, parseFloat(tabDepthInput.value)||3.2);
   const clearance = Math.max(0.05, parseFloat(tabClearanceInput.value)||0.2);
