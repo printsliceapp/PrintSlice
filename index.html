@@ -265,6 +265,18 @@
     border-bottom:1px solid var(--line);
   }
   #accountBar button{ width:auto; margin:0; padding:5px 10px; font-size:11px; }
+
+  #topRightNav{
+    position:fixed; top:14px; right:14px; z-index:50;
+    display:flex; gap:14px; font-size:12px;
+    background:var(--paper); border:1px solid var(--line); border-radius:999px;
+    padding:8px 16px; box-shadow:var(--shadow-md);
+  }
+  #topRightNav a{ color:var(--ink-soft); text-decoration:none; }
+  #topRightNav a:hover{ color:var(--ink); }
+  @media (max-width: 720px){
+    #topRightNav{ top:8px; right:8px; padding:6px 12px; font-size:11px; gap:10px; }
+  }
 </style>
 </head>
 <body>
@@ -325,6 +337,10 @@
   </div>
 </div>
 <div id="app" hidden>
+  <div id="topRightNav">
+    <a href="/help.html">Help &amp; FAQ</a>
+    <a href="/contact.html">Contact</a>
+  </div>
   <div id="sidebar">
     <div id="accountBar">
       <span id="accountEmail"></span>
@@ -332,10 +348,6 @@
         <button class="btn-secondary" id="manageBillingBtn">Manage billing</button>
         <button class="btn-secondary" id="logoutBtn">Log out</button>
       </div>
-    </div>
-    <div style="display:flex; gap:14px; font-size:11.5px; color:var(--ink-faint); margin:-10px 0 16px;">
-      <a href="/help.html" style="color:inherit; text-decoration:none;">Help &amp; FAQ</a>
-      <a href="/contact.html" style="color:inherit; text-decoration:none;">Contact</a>
     </div>
     <div class="brand">
       <div class="brand-icon">
@@ -662,6 +674,31 @@ if (new URLSearchParams(window.location.search).get("checkout") === "success"){
 <script>
 (function(){
 "use strict";
+
+// Fire-and-forget: a real bug in the connector geometry code (an actual
+// thrown exception, not an expected rejection like "too far away") gets
+// logged to Supabase instead of only ever reaching whichever user's own
+// DevTools console happened to be open — otherwise diagnosing it means
+// asking that specific user to reproduce it again with the console open,
+// which is slow and not always possible. Deliberately never awaited and
+// never lets its own failure surface anywhere: reporting a bug must not
+// risk becoming a second bug (e.g. if the user is logged out, or Supabase
+// itself is briefly unreachable, placement should still work exactly as
+// if this didn't exist).
+function reportClientError(message, context){
+  try {
+    sb.auth.getSession().then(({ data }) => {
+      const userId = data && data.session && data.session.user ? data.session.user.id : null;
+      if (!userId) return; // insert policy requires auth.uid() = user_id — nothing to report without one
+      sb.from('client_errors').insert({
+        user_id: userId,
+        message: String(message).slice(0, 2000),
+        stack: context && context.stack ? String(context.stack).slice(0, 4000) : null,
+        context: context && context.data || null
+      }).then(()=>{}, ()=>{});
+    }).catch(()=>{});
+  } catch (e) { /* never let error reporting itself throw */ }
+}
 
 /* ---------- small vector helpers (triangles are [ [x,y,z], [x,y,z], [x,y,z] ]) ---------- */
 function sub3(a,b){ return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
@@ -2653,6 +2690,7 @@ function previewHandleClick(event){
   refreshPartPreview();
   } catch (err){
     console.error("previewHandleClick failed:", err);
+    reportClientError("previewHandleClick failed: " + err.message, { stack: err.stack });
     showJointMsg("Couldn't place a connector there — something went wrong reading the model's geometry at this spot. Try a nearby point.", true);
   }
 }
@@ -3271,6 +3309,10 @@ function recomputeJoinedPieces(){
         femaleTriangles = afterCut;
       } catch (err){
         console.error("Joint " + j.id + " failed to build:", err);
+        reportClientError("Joint failed to build: " + err.message, {
+          stack: err.stack,
+          data: { type: j.type, sz: j.sz, depth: j.depth, clearance: j.clearance, femaleTriCount: femaleTriangles.length }
+        });
         j.valid = false; j.reason = 'verify-failed'; j._lastGeo = null;
       }
     }
