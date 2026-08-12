@@ -2396,10 +2396,37 @@ function previewHandleClick(event){
     showJointMsg("No surface there — click directly on the model.", true);
     return;
   }
+  // Everything from here on (geometry classification, the reachability
+  // search, and the actual CSG-backed placement) touches real, sometimes
+  // fragile solid-geometry code running against whatever the user's actual
+  // model happens to contain. Any of it throwing used to abort this handler
+  // silently: no marker, no message, add mode left stuck — the click just
+  // appeared to do nothing. A catch-all here guarantees the user always
+  // sees SOMETHING happen, even if it's just an honest "couldn't place a
+  // connector there" instead of dead silence.
+  try {
+
   const hitInfo = classifyPreviewHit(hits[0]);
 
   const piece = computedPieces[previewPieceIndex];
   const maleKey = pieceKeyOf(piece);
+  // Every distance/reachability check below is measured against the
+  // PRISTINE base pieces (fresh from the split, before any connector ever
+  // carved or bumped them), never against `computedPieces`. Two physical
+  // parts are close together or they aren't, independent of how many
+  // connectors have already been placed nearby — but `computedPieces` is
+  // mutated by every earlier joint: a female piece that already has sockets
+  // cut into it near this spot has LESS surface there (its nearest point
+  // measures to a receded cavity wall instead of the original flush seam),
+  // and a male piece with existing tabs bumped onto it can make a click
+  // near a previous connector land on the tip of a tiny protrusion instead
+  // of the flat base surface. Both would silently inflate the measured gap
+  // for clicks placed near an existing connector cluster. The click itself
+  // still has to raycast against the real, current, on-screen mesh
+  // (computedPieces), but what counts as "nearby" comes from the untouched
+  // original geometry instead.
+  const baseByKeyForClick = new Map(lastSplitResult.pieces.map(p => [pieceKeyOf(p), p]));
+  const baseMalePiece = baseByKeyForClick.get(maleKey) || piece;
   // try the grid-neighbor guess first (correct whenever the click really is
   // on an internal seam between two grid cells), but most of a piece's
   // surface on an organic/faceted model is its true EXTERIOR, where no such
@@ -2414,15 +2441,15 @@ function previewHandleClick(event){
   // trust the grid-neighbor guess if its own geometry is actually near the
   // click; otherwise fall back to whichever piece truly is closest (see
   // nearestOtherPiece).
-  let femaleKey = neighborKey(piece, hitInfo.axis, hitInfo.dir);
-  const neighborPiece = computedPieces.find(p => pieceKeyOf(p) === femaleKey);
+  let femaleKey = neighborKey(baseMalePiece, hitInfo.axis, hitInfo.dir);
+  const neighborPiece = baseByKeyForClick.get(femaleKey);
   // generous enough to allow for real surface curvature between the clicked
   // point and the neighbor's nearest vertex, but nowhere near the tens-of-mm
   // gap a genuinely wrong piece guess showed in testing.
   const plausibleRadius = Math.max(20, (parseFloat(tabSizeInput.value)||8) * 2.5);
-  const neighborIsPlausible = neighborPiece && nearestVertexDist2(neighborPiece.triangles, hitInfo.point) < plausibleRadius*plausibleRadius;
+  const neighborIsPlausible = neighborPiece && nearestSurfaceDist2(neighborPiece.triangles, hitInfo.point) < plausibleRadius*plausibleRadius;
   if (!neighborIsPlausible){
-    const fallback = nearestOtherPiece(computedPieces, maleKey, hitInfo.point);
+    const fallback = nearestOtherPiece([...baseByKeyForClick.values()], maleKey, hitInfo.point);
     if (!fallback){
       showJointMsg("This is the only part — there's nothing to connect it to.", true);
       return;
@@ -2438,8 +2465,8 @@ function previewHandleClick(event){
   // testing: at ~32mm away, the carve box had zero base triangles anywhere
   // near its own footprint — a socket with nothing real around it). Reject
   // outright here rather than silently placing a connector that can't work.
-  const chosenFemale = computedPieces.find(p => pieceKeyOf(p) === femaleKey);
-  const straightLineGap = Math.sqrt(nearestVertexDist2(chosenFemale.triangles, hitInfo.point));
+  const chosenFemale = baseByKeyForClick.get(femaleKey);
+  const straightLineGap = Math.sqrt(nearestSurfaceDist2(chosenFemale.triangles, hitInfo.point));
   const maxReach = Math.max(15, (parseFloat(tabDepthInput.value)||3.2) * 3);
   if (straightLineGap > maxReach){
     showJointMsg("No other part is close enough here to connect to (nearest is " + straightLineGap.toFixed(1) + "mm away) — try clicking closer to where the pieces actually meet.", true);
@@ -2491,6 +2518,10 @@ function previewHandleClick(event){
     setPreviewAddMode(false);
   }
   refreshPartPreview();
+  } catch (err){
+    console.error("previewHandleClick failed:", err);
+    showJointMsg("Couldn't place a connector there — something went wrong reading the model's geometry at this spot. Try a nearby point.", true);
+  }
 }
 
 // only draws markers for joints that actually touch the piece currently
@@ -2804,11 +2835,60 @@ function neighborKey(piece, axis, delta){
 // direct testing — the box ended up with zero base triangles anywhere near
 // its own footprint), producing a socket disconnected from real geometry
 // instead of the visible cavity a user expects. Distance to the piece's own
-// VERTICES is the real proxy for "is this piece's surface actually here."
-function nearestVertexDist2(triangles, point){
+// SURFACE (see nearestSurfaceDist2 below) is the real proxy for "is this
+// piece's surface actually here."
+
+// closest point to `p` on triangle (a,b,c), clamped into the triangle —
+// standard barycentric-region test (Ericson, "Real-Time Collision
+// Detection" 5.1.5).
+function closestPointOnTriangle(p, a, b, c){
+  const ab = sub3(b,a), ac = sub3(c,a), ap = sub3(p,a);
+  const d1 = dot3(ab,ap), d2 = dot3(ac,ap);
+  if (d1 <= 0 && d2 <= 0) return a;
+  const bp = sub3(p,b);
+  const d3 = dot3(ab,bp), d4 = dot3(ac,bp);
+  if (d3 >= 0 && d4 <= d3) return b;
+  const vc = d1*d4 - d3*d2;
+  if (vc <= 0 && d1 >= 0 && d3 <= 0){
+    const v = d1/(d1-d3);
+    return [a[0]+ab[0]*v, a[1]+ab[1]*v, a[2]+ab[2]*v];
+  }
+  const cp = sub3(p,c);
+  const d5 = dot3(ab,cp), d6 = dot3(ac,cp);
+  if (d6 >= 0 && d5 <= d6) return c;
+  const vb = d5*d2 - d1*d6;
+  if (vb <= 0 && d2 >= 0 && d6 <= 0){
+    const w = d2/(d2-d6);
+    return [a[0]+ac[0]*w, a[1]+ac[1]*w, a[2]+ac[2]*w];
+  }
+  const va = d3*d6 - d5*d4;
+  if (va <= 0 && (d4-d3) >= 0 && (d5-d6) >= 0){
+    const w = (d4-d3)/((d4-d3)+(d5-d6));
+    return [b[0]+(c[0]-b[0])*w, b[1]+(c[1]-b[1])*w, b[2]+(c[2]-b[2])*w];
+  }
+  const denom = 1/(va+vb+vc);
+  const v = vb*denom, w = vc*denom;
+  return [a[0]+ab[0]*v+ac[0]*w, a[1]+ab[1]*v+ac[1]*w, a[2]+ab[2]*v+ac[2]*w];
+}
+
+// Real point-to-SURFACE distance, not point-to-vertex. nearestVertexDist2
+// undershoots correctly whenever the nearest bit of a piece really is a
+// sparse triangulation's corner, but a flat cut face is very often just
+// two large triangles — vertices only at the four corners — and clicking
+// anywhere near the MIDDLE of that face then measures distance to a corner
+// tens of mm away even though the real surface passes directly under the
+// click. Confirmed by direct testing: a point placed exactly ON a coarse
+// two-triangle seam face (0mm true distance) measured 85mm away under the
+// old vertex-only check, purely because that face had no interior vertices
+// for it to find. Walking every triangle and clamping to its closest point
+// (not just its corners) fixes this for any triangulation density, coarse
+// or fine — this is very likely what was actually rejecting placement
+// "everywhere" on real, organic models with large flat cut faces.
+function nearestSurfaceDist2(triangles, point){
   let best = Infinity;
-  for (const t of triangles) for (const v of t){
-    const dx=v[0]-point[0], dy=v[1]-point[1], dz=v[2]-point[2];
+  for (const t of triangles){
+    const cp = closestPointOnTriangle(point, t[0], t[1], t[2]);
+    const dx=cp[0]-point[0], dy=cp[1]-point[1], dz=cp[2]-point[2];
     const d2 = dx*dx+dy*dy+dz*dz;
     if (d2 < best) best = d2;
   }
@@ -2963,7 +3043,7 @@ function nearestOtherPiece(pieces, excludeKey, point){
   let best = null, bestDist2 = Infinity;
   for (const p of pieces){
     if (pieceKeyOf(p) === excludeKey) continue;
-    const d2 = nearestVertexDist2(p.triangles, point);
+    const d2 = nearestSurfaceDist2(p.triangles, point);
     if (d2 < bestDist2){ bestDist2 = d2; best = p; }
   }
   return best;
@@ -3006,42 +3086,60 @@ function recomputeJoinedPieces(){
     // from earlier cuts.
     let femaleTriangles = basePiece.triangles;
     for (const j of joints){
-      const maleBase = baseByKey.get(j.maleKey);
-      if (!maleBase){ j.valid=false; j.reason='piece-missing'; continue; }
+      // The BSP boolean engine (csgSubtractTriangles) is real solid
+      // geometry, not an approximation, but that means it's also doing real
+      // work — degenerate/near-coplanar triangles in a particular model's
+      // actual seam can throw partway through instead of just producing a
+      // slightly-off result. Before this try/catch existed, that exception
+      // propagated all the way up through tryAddJoint and out of the click
+      // handler uncaught: the joint stayed in manualJoints (pushed before
+      // recompute ever ran), nothing rendered, no message showed, and the
+      // "Add" button was left silently unable to place anything else — the
+      // exact symptom reported ("only lets me place one connector, no error
+      // at all"). One connector's geometry failing on a specific model must
+      // never take down every connector after it; mark just this one
+      // invalid and keep going.
+      try {
+        const maleBase = baseByKey.get(j.maleKey);
+        if (!maleBase){ j.valid=false; j.reason='piece-missing'; continue; }
 
-      const geo = buildConnectorPair({ axis:j.axis, planeValue:j.planeValue, dir:j.dir, p1:j.p1, p2:j.p2, sz:j.sz, width:j.width, height:j.height, depth:j.depth, tol:lastSplitResult.tol, type:j.type, clearance:j.clearance, femaleGap:j.femaleGap });
-      j._lastGeo = geo.ok ? geo : null;
-      if (!geo.ok){ j.valid=false; j.reason=geo.reason; continue; }
+        const geo = buildConnectorPair({ axis:j.axis, planeValue:j.planeValue, dir:j.dir, p1:j.p1, p2:j.p2, sz:j.sz, width:j.width, height:j.height, depth:j.depth, tol:lastSplitResult.tol, type:j.type, clearance:j.clearance, femaleGap:j.femaleGap });
+        j._lastGeo = geo.ok ? geo : null;
+        if (!geo.ok){ j.valid=false; j.reason=geo.reason; continue; }
 
-      // reject up front, before ever running the (comparatively expensive)
-      // boolean, if the connector is clearly too big for the parts it's on
-      // or long enough to punch straight through the other side.
-      const fit = checkConnectorFit(j, geo, maleBase, basePiece);
-      if (!fit.ok){ j.valid=false; j.reason=fit.reason; j._lastGeo=null; continue; }
+        // reject up front, before ever running the (comparatively expensive)
+        // boolean, if the connector is clearly too big for the parts it's on
+        // or long enough to punch straight through the other side.
+        const fit = checkConnectorFit(j, geo, maleBase, basePiece);
+        if (!fit.ok){ j.valid=false; j.reason=fit.reason; j._lastGeo=null; continue; }
 
-      const cutterWorld = j.basis
-        ? geo.cutterTriangles.map(t => t.map(v => localToWorld(v, j.basis, j.origin)))
-        : geo.cutterTriangles;
-      const afterCut = csgSubtractTriangles(femaleTriangles, cutterWorld);
+        const cutterWorld = j.basis
+          ? geo.cutterTriangles.map(t => t.map(v => localToWorld(v, j.basis, j.origin)))
+          : geo.cutterTriangles;
+        const afterCut = csgSubtractTriangles(femaleTriangles, cutterWorld);
 
-      // A real boolean that left the mesh unchanged means the cutter solid
-      // never actually intersected it — e.g. a gap estimate that placed it
-      // just past the true surface. That's still "no visible cavity," same
-      // as it would have been under the old box-carve, so it's rejected
-      // the same way rather than shipped as a silently broken female end.
-      const beforeKeys = new Set(femaleTriangles.map(triKey));
-      const genuinelyChanged = afterCut.length !== femaleTriangles.length || afterCut.some(t => !beforeKeys.has(triKey(t)));
-      if (!genuinelyChanged){ j.valid=false; j.reason='no-cavity'; j._lastGeo=null; continue; }
+        // A real boolean that left the mesh unchanged means the cutter solid
+        // never actually intersected it — e.g. a gap estimate that placed it
+        // just past the true surface. That's still "no visible cavity," same
+        // as it would have been under the old box-carve, so it's rejected
+        // the same way rather than shipped as a silently broken female end.
+        const beforeKeys = new Set(femaleTriangles.map(triKey));
+        const genuinelyChanged = afterCut.length !== femaleTriangles.length || afterCut.some(t => !beforeKeys.has(triKey(t)));
+        if (!genuinelyChanged){ j.valid=false; j.reason='no-cavity'; j._lastGeo=null; continue; }
 
-      j.valid = true; j.reason = null;
-      // an oriented joint's tab comes out of buildConnectorPair in its own
-      // local frame (same as the cutter solid) and must be rotated into
-      // world coordinates before it can be welded onto the male piece,
-      // which is otherwise entirely in world space.
-      j._maleTabTriangles = j.basis
-        ? geo.tabTriangles.map(t => t.map(v => localToWorld(v, j.basis, j.origin)))
-        : geo.tabTriangles;
-      femaleTriangles = afterCut;
+        j.valid = true; j.reason = null;
+        // an oriented joint's tab comes out of buildConnectorPair in its own
+        // local frame (same as the cutter solid) and must be rotated into
+        // world coordinates before it can be welded onto the male piece,
+        // which is otherwise entirely in world space.
+        j._maleTabTriangles = j.basis
+          ? geo.tabTriangles.map(t => t.map(v => localToWorld(v, j.basis, j.origin)))
+          : geo.tabTriangles;
+        femaleTriangles = afterCut;
+      } catch (err){
+        console.error("Joint " + j.id + " failed to build:", err);
+        j.valid = false; j.reason = 'verify-failed'; j._lastGeo = null;
+      }
     }
     femaleResultByKey.set(femaleKey, femaleTriangles);
   }
