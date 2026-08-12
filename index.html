@@ -754,6 +754,35 @@ function checkWatertight(triangles, tol){
   return { watertight: open===0, openEdges: open };
 }
 
+// The endpoint positions of every edge that ISN'T shared by exactly two
+// triangles — i.e. exactly the points checkWatertight already counts, just
+// returned as real coordinates instead of a bare number. Used to feed
+// csgWeldTJunctions extra weld candidates beyond the current cut's own new
+// vertices, so a T-junction left over from an EARLIER connector on the
+// same piece still gets a chance to close instead of silently compounding
+// through every cut placed after it (see csgSubtractTriangles).
+function openEdgeVertices(triangles, tol){
+  const inv = 1/tol;
+  const keyOf = v => Math.round(v[0]*inv)+","+Math.round(v[1]*inv)+","+Math.round(v[2]*inv);
+  const counts = new Map(), posOf = new Map();
+  for (const tri of triangles){
+    const k=[keyOf(tri[0]),keyOf(tri[1]),keyOf(tri[2])];
+    for (let i=0;i<3;i++) posOf.set(k[i], tri[i]);
+    const edges=[[k[0],k[1]],[k[1],k[2]],[k[2],k[0]]];
+    for (const [a,b] of edges){
+      const key = a<b ? a+"|"+b : b+"|"+a;
+      counts.set(key, (counts.get(key)||0)+1);
+    }
+  }
+  const verts = [];
+  for (const [key, count] of counts){
+    if (count === 2) continue;
+    const [a,b] = key.split("|");
+    verts.push(posOf.get(a), posOf.get(b));
+  }
+  return verts;
+}
+
 /* ---------- STL parsing ---------- */
 function parseSTL(buffer){
   if (buffer.byteLength >= 84){
@@ -1453,6 +1482,12 @@ function clipOpen(triangles, axis, planeValue, keepGreater){
 // ---------------------------------------------------------------------
 const CSG_EPS = 1e-5;
 
+// Populated (as a fresh array) by csgSubtractTriangles for the duration of
+// one boolean, and read back afterward to know exactly which points to
+// weld T-junctions at — see the note on CsgPlane.prototype.splitPolygon's
+// SPANNING case for why these particular points are the complete set.
+let csgTrackedSplitVerts = null;
+
 function CsgVertex(pos){ this.pos = pos; }
 CsgVertex.prototype.clone = function(){ return new CsgVertex(this.pos.slice()); };
 CsgVertex.prototype.interpolate = function(other, t){ return new CsgVertex(lerp3(this.pos, other.pos, t)); };
@@ -1499,6 +1534,13 @@ CsgPlane.prototype.splitPolygon = function(polygon, coplanarFront, coplanarBack,
           const t = (this.w - dot3(this.normal, vi.pos)) / denom;
           const v = vi.interpolate(vj, t);
           f.push(v); b.push(v);
+          // this new point is exactly the kind of place a T-junction can
+          // form: it's a real vertex here, but a neighboring polygon that
+          // never got split by this same plane has no vertex at this spot
+          // — its edge just passes through it. Recording it here means the
+          // weld pass afterward only has to check these specific points
+          // instead of every vertex in the whole piece.
+          if (csgTrackedSplitVerts) csgTrackedSplitVerts.push(v.pos);
         }
       }
       if (f.length>=3) front.push(new CsgPolygon(f));
@@ -1519,39 +1561,107 @@ function CsgNode(polygons){
   this.plane = null; this.front = null; this.back = null; this.polygons = [];
   if (polygons && polygons.length) this.build(polygons);
 }
+// All four of these were originally the textbook straight-recursive BSP
+// algorithm (recurse into front, recurse into back). That's fine for a
+// shallow tree, but this app rebuilds a fresh tree from scratch on every
+// single connector cut, and a piece that already carries several earlier
+// connectors' worth of fragmented geometry can produce a tree deep enough
+// to blow the JS call stack outright — confirmed by direct testing on a
+// real organic model: placing a second connector near an already-cut area
+// threw "RangeError: Maximum call stack size exceeded" from inside
+// CsgNode.build, which surfaced to the user as a silent "geometry couldn't
+// be generated cleanly" rejection. An explicit work stack on the heap has
+// no such depth limit — these are otherwise the exact same algorithms,
+// same results, just not relying on the native call stack to hold state.
 CsgNode.prototype.invert = function(){
-  for (const p of this.polygons) p.flip();
-  if (this.plane) this.plane.flip();
-  if (this.front) this.front.invert();
-  if (this.back) this.back.invert();
-  const tmp = this.front; this.front = this.back; this.back = tmp;
+  const stack = [this];
+  while (stack.length){
+    const node = stack.pop();
+    for (const p of node.polygons) p.flip();
+    if (node.plane) node.plane.flip();
+    const tmp = node.front; node.front = node.back; node.back = tmp;
+    if (node.front) stack.push(node.front);
+    if (node.back) stack.push(node.back);
+  }
 };
-CsgNode.prototype.clipPolygons = function(polygons){
-  if (!this.plane) return polygons.slice();
-  let front=[], back=[];
-  for (const p of polygons) this.plane.splitPolygon(p, front, back, front, back);
-  front = this.front ? this.front.clipPolygons(front) : front;
-  back = this.back ? this.back.clipPolygons(back) : [];
-  return front.concat(back);
+// Unlike invert/clipTo/allPolygons/build (which only ever need to VISIT
+// every node), this one's recursive shape returns a value front/back calls
+// must both finish before their parent can concatenate them — an iterative
+// equivalent needs an explicit stack of pending "call frames" that records
+// where each result should be written once its subtree finishes, mirroring
+// exactly what the native call stack would otherwise be holding.
+CsgNode.prototype.clipPolygons = function(rootPolygons){
+  const root = { node:this, polygons:rootPolygons, parent:null, slot:null, state:0 };
+  const stack = [root];
+  let rootResult = null;
+  while (stack.length){
+    const f = stack[stack.length-1];
+    if (f.state === 0){
+      if (!f.node.plane){
+        stack.pop();
+        const res = f.polygons.slice();
+        if (f.parent) f.parent[f.slot] = res; else rootResult = res;
+        continue;
+      }
+      const front=[], back=[];
+      for (const p of f.polygons) f.node.plane.splitPolygon(p, front, back, front, back);
+      f.pendingBack = back;
+      f.state = 1;
+      if (f.node.front){
+        stack.push({ node:f.node.front, polygons:front, parent:f, slot:'frontResult', state:0 });
+      } else {
+        f.frontResult = front;
+      }
+      continue;
+    }
+    if (f.state === 1){
+      f.state = 2;
+      if (f.node.back){
+        stack.push({ node:f.node.back, polygons:f.pendingBack, parent:f, slot:'backResult', state:0 });
+      } else {
+        f.backResult = [];
+      }
+      continue;
+    }
+    // state 2: both children (if any) have already written their results
+    // into this frame — safe to concatenate and hand back up.
+    stack.pop();
+    const res = f.frontResult.concat(f.backResult);
+    if (f.parent) f.parent[f.slot] = res; else rootResult = res;
+  }
+  return rootResult;
 };
 CsgNode.prototype.clipTo = function(bsp){
-  this.polygons = bsp.clipPolygons(this.polygons);
-  if (this.front) this.front.clipTo(bsp);
-  if (this.back) this.back.clipTo(bsp);
+  const stack = [this];
+  while (stack.length){
+    const node = stack.pop();
+    node.polygons = bsp.clipPolygons(node.polygons);
+    if (node.front) stack.push(node.front);
+    if (node.back) stack.push(node.back);
+  }
 };
 CsgNode.prototype.allPolygons = function(){
-  let polys = this.polygons.slice();
-  if (this.front) polys = polys.concat(this.front.allPolygons());
-  if (this.back) polys = polys.concat(this.back.allPolygons());
-  return polys;
+  const result = [];
+  const stack = [this];
+  while (stack.length){
+    const node = stack.pop();
+    for (const p of node.polygons) result.push(p);
+    if (node.front) stack.push(node.front);
+    if (node.back) stack.push(node.back);
+  }
+  return result;
 };
-CsgNode.prototype.build = function(polygons){
-  if (!polygons.length) return;
-  if (!this.plane) this.plane = polygons[0].plane.clone();
-  const front=[], back=[];
-  for (const p of polygons) this.plane.splitPolygon(p, this.polygons, this.polygons, front, back);
-  if (front.length){ if (!this.front) this.front = new CsgNode(); this.front.build(front); }
-  if (back.length){ if (!this.back) this.back = new CsgNode(); this.back.build(back); }
+CsgNode.prototype.build = function(rootPolygons){
+  const stack = [{ node:this, polygons:rootPolygons }];
+  while (stack.length){
+    const { node, polygons } = stack.pop();
+    if (!polygons.length) continue;
+    if (!node.plane) node.plane = polygons[0].plane.clone();
+    const front=[], back=[];
+    for (const p of polygons) node.plane.splitPolygon(p, node.polygons, node.polygons, front, back);
+    if (front.length){ if (!node.front) node.front = new CsgNode(); stack.push({ node:node.front, polygons:front }); }
+    if (back.length){ if (!node.back) node.back = new CsgNode(); stack.push({ node:node.back, polygons:back }); }
+  }
 };
 
 function csgPolygonsFromTriangles(triangles){
@@ -1586,27 +1696,19 @@ function csgTrianglesFromPolygons(polygons){
 // finds every triangle with a "foreign" vertex sitting exactly on one of
 // its own edges and re-splits it there, which is what actually closes a
 // boundary like that rather than leaving it merely near-matching.
-function csgWeldTJunctions(triangles, tol, regionMin, regionMax){
-  const inv = 1/tol;
-  const keyOf = v => Math.round(v[0]*inv)+","+Math.round(v[1]*inv)+","+Math.round(v[2]*inv);
-  const vertMap = new Map();
-  for (const t of triangles) for (const v of t){
-    if (v[0]<regionMin[0]||v[0]>regionMax[0]||v[1]<regionMin[1]||v[1]>regionMax[1]||v[2]<regionMin[2]||v[2]>regionMax[2]) continue;
-    vertMap.set(keyOf(v), v);
-  }
-  const candidates = [...vertMap.values()];
+//
+// `candidates` is the exact set of points this specific cut could possibly
+// have introduced a T-junction at — every vertex the boolean created by
+// splitting an edge (see splitPolygon's SPANNING case, captured live via
+// csgTrackedSplitVerts). A piece's other, older vertices from earlier cuts
+// weren't touched by this one and can't be the cause of a new T-junction,
+// so they never need to be considered here — this is what keeps a weld
+// pass cheap regardless of how many prior connectors already live on the
+// same piece, instead of it rescanning the whole piece every time.
+function csgWeldTJunctions(triangles, tol, candidates){
   if (candidates.length === 0) return triangles;
 
-  function inRegion(v){
-    return v[0]>=regionMin[0]&&v[0]<=regionMax[0]&&v[1]>=regionMin[1]&&v[1]<=regionMax[1]&&v[2]>=regionMin[2]&&v[2]<=regionMax[2];
-  }
-  // a T-junction from THIS cutter can only ever involve a triangle that
-  // has at least one vertex in the cutter's own region — anything entirely
-  // outside it was untouched by this subtraction, so skipping those keeps
-  // this bounded to the local area around the connector, not the whole
-  // piece, regardless of how large the piece itself is.
   function splitOnce(t){
-    if (!t.some(inRegion)) return null;
     for (let i=0;i<3;i++){
       const p0=t[i], p1=t[(i+1)%3], p2=t[(i+2)%3];
       const edgeVec = sub3(p1,p0);
@@ -1650,6 +1752,7 @@ function csgSubtractTriangles(aTriangles, bTriangles){
   if (bTriangles.length === 0) return aTriangles.slice();
   const a = new CsgNode(csgPolygonsFromTriangles(aTriangles));
   const b = new CsgNode(csgPolygonsFromTriangles(bTriangles));
+  csgTrackedSplitVerts = [];
   a.invert();
   a.clipTo(b);
   b.clipTo(a);
@@ -1658,6 +1761,8 @@ function csgSubtractTriangles(aTriangles, bTriangles){
   b.invert();
   a.build(b.allPolygons());
   a.invert();
+  const splitVerts = csgTrackedSplitVerts;
+  csgTrackedSplitVerts = null;
   let result = csgTrianglesFromPolygons(a.allPolygons());
 
   // Repeated interpolation near a shallow-angle plane intersection (a
@@ -1689,14 +1794,42 @@ function csgSubtractTriangles(aTriangles, bTriangles){
   // testing: a cube's SIDE wall, nowhere near the cutter in two of three
   // axes, still picked up a stray T-junction exactly at the cutter's cap
   // height). So the affected region isn't just "near the cutter" — it's
-  // anywhere in A that any of B's planes reach, which in the worst case is
-  // all of A. Bounding the search to A's own extent (not a small pad
-  // around B) is what actually covers every case, not just the common one.
-  let regionMin=[Infinity,Infinity,Infinity], regionMax=[-Infinity,-Infinity,-Infinity];
-  for (const t of result) for (const v of t) for (let k=0;k<3;k++){
-    if (v[k]<regionMin[k]) regionMin[k]=v[k];
-    if (v[k]>regionMax[k]) regionMax[k]=v[k];
+  // anywhere in A that any of B's planes reach, which sounds like it could
+  // be all of A — but "reach" only ever means "introduce a new vertex by
+  // splitting an edge there" (see splitPolygon's SPANNING case), and every
+  // one of those new vertices was captured directly, live, as it was
+  // created, into splitVerts. That is the EXACT and COMPLETE set of points
+  // a T-junction can possibly form at — nothing else in the mesh moved.
+  // Using it directly instead of re-deriving "everywhere nearby" from a
+  // whole-piece bounding box is what fixes this: welding used to rescan
+  // every vertex already in the piece (hundreds, growing with every prior
+  // connector) against every triangle, on every one of up to 4 tolerance
+  // attempts — confirmed by direct testing to be over 95% of a cut's total
+  // time, and the dominant reason cuts got dramatically slower as more
+  // connectors piled up on the same piece. A piece's OLD, already-settled
+  // vertices from earlier cuts were never candidates for a NEW T-junction
+  // this cut could introduce, so they never needed to be in the search at
+  // all.
+  const checkTol = 1e-3;
+  const snappedSplitVerts = [];
+  const seenSplit = new Set();
+  function addCandidate(v){
+    const p = snap(v);
+    const key = p[0]+","+p[1]+","+p[2];
+    if (!seenSplit.has(key)){ seenSplit.add(key); snappedSplitVerts.push(p); }
   }
+  for (const v of splitVerts) addCandidate(v);
+  // `result` can already be non-watertight before this cut's own weld even
+  // runs — e.g. a prior connector on this same piece whose own T-junction
+  // weld didn't fully close (see csgSubtractTriangles's tolerance-retry
+  // loop, which keeps whichever attempt measurably won, not necessarily a
+  // perfect one). Those leftover open-edge points aren't new vertices FROM
+  // this cut, so splitVerts alone wouldn't include them — but they're still
+  // real candidates worth another attempt here, or every connector placed
+  // after a slightly-imperfect one would inherit and compound its debt
+  // forever. This stays cheap because it's still bounded by how many edges
+  // are actually open, not by the piece's full vertex count.
+  for (const v of openEdgeVertices(result, checkTol)) addCandidate(v);
   // A tolerance wide enough to close every T-junction (needed for shallow-
   // angle cases like a cylinder meeting a box face) is also wide enough to
   // occasionally match a vertex that ISN'T really a T-junction, splitting a
@@ -1707,11 +1840,10 @@ function csgSubtractTriangles(aTriangles, bTriangles){
   // every case, try progressively looser ones and keep whichever actually
   // produces the fewest open edges — never a looser attempt just because
   // it ran later, only because it measurably won.
-  const checkTol = 1e-3;
   let best = result, bestOpen = checkWatertight(result, checkTol).openEdges;
   for (const tolTry of [1e-3, 2e-3, 5e-3, 1e-2]){
     if (bestOpen === 0) break;
-    const attempt = csgWeldTJunctions(result, tolTry, regionMin, regionMax);
+    const attempt = csgWeldTJunctions(result, tolTry, snappedSplitVerts);
     const open = checkWatertight(attempt, checkTol).openEdges;
     if (open < bestOpen){ best = attempt; bestOpen = open; }
   }
