@@ -2256,10 +2256,33 @@ function getCsgWorker(){
   };
   return csgWorker;
 }
+// A worst-case shape (many prior connectors, an unusually fragmented BSP
+// tree) can legitimately take a long time — real work, not a bug, and
+// there is no way to know in advance which side of "slow" vs "effectively
+// never finishing" a given click will land on. Rather than leave the user
+// staring at "Please wait" with no way out if it's the latter, give it a
+// generous but finite budget; past that, the whole worker is torn down
+// and replaced (a Worker has no way to cancel an in-progress synchronous
+// computation from outside — terminate() is the only way to actually stop
+// it) so the NEXT attempt starts clean instead of queuing up behind a
+// computation that's never going to return.
+const CSG_WORKER_TIMEOUT_MS = 60000;
 function runJoinComputation(manualJointsPlain, basePieces, tol){
   return new Promise((resolve, reject) => {
     const reqId = ++csgWorkerReqId;
-    csgWorkerPending.set(reqId, { resolve, reject });
+    const timer = setTimeout(() => {
+      const pending = csgWorkerPending.get(reqId);
+      if (!pending) return; // already resolved/rejected by a real response
+      csgWorkerPending.delete(reqId);
+      if (csgWorker){ csgWorker.terminate(); csgWorker = null; }
+      for (const { reject: rejectOther } of csgWorkerPending.values()) rejectOther(new Error('Worker timed out'));
+      csgWorkerPending.clear();
+      reject(new Error('This spot is taking too long to compute — try a different location, a smaller connector, or spacing connectors further apart.'));
+    }, CSG_WORKER_TIMEOUT_MS);
+    csgWorkerPending.set(reqId, {
+      resolve: (v) => { clearTimeout(timer); resolve(v); },
+      reject: (e) => { clearTimeout(timer); reject(e); }
+    });
     getCsgWorker().postMessage({ reqId, manualJoints: manualJointsPlain, basePieces, tol });
   });
 }
@@ -4252,7 +4275,7 @@ async function previewHandleClick(event){
   // responsive — but it can still take a few real seconds of computation
   // on a piece that already has other geometry, and a click that visibly
   // does nothing for that long reads as broken even though it's working.
-  showJointMsg("Placing connector…", false);
+  showJointMsg("Please wait, placing connector — this can take up to a minute on more complex shapes.", false);
 
   // the connector is carved in its own local frame (aligned to the true,
   // unsnapped clicked-surface normal), which is always centered exactly on
@@ -4367,7 +4390,7 @@ function renderPreviewJointPanel(){
     '</div>';
   document.getElementById("ppmConnectSelect").addEventListener("change", async (e)=>{
     if (isMale) j.femaleKey = e.target.value; else j.maleKey = e.target.value;
-    await recomputeJoinedPieces();
+    if (!(await safeRecompute())) return;
     renderPieces(lastSplitResult, parseFloat(bedXInput.value)||220, parseFloat(bedYInput.value)||220, parseFloat(bedZInput.value)||250);
     renderJointsList();
     refreshPartPreview();
@@ -4382,7 +4405,7 @@ function renderPreviewJointPanel(){
   document.getElementById("ppmSwapBtn").addEventListener("click", async ()=>{
     j.dir = -j.dir;
     const tmp = j.maleKey; j.maleKey = j.femaleKey; j.femaleKey = tmp;
-    await recomputeJoinedPieces();
+    if (!(await safeRecompute())) return;
     renderPieces(lastSplitResult, parseFloat(bedXInput.value)||220, parseFloat(bedYInput.value)||220, parseFloat(bedZInput.value)||250);
     renderJointsList();
     refreshPartPreview();
@@ -4568,7 +4591,11 @@ splitBtn.addEventListener("click", ()=>{
       manualJoints = [];
       selectedJointId = null;
       nextJointNum = 1;
-      await recomputeJoinedPieces();
+      // a fresh split has zero joints, so this recompute is just "copy the
+      // base pieces into computedPieces" — it can't meaningfully fail (no
+      // connector geometry involved yet), but await it anyway so the piece
+      // list below reflects computedPieces rather than racing ahead of it.
+      await recomputeJoinedPieces().catch(()=>{});
       renderPieces(result, bedX, bedY, bedZ);
       addJointBtn.disabled = result.pieces.length < 2;
     } catch(err){
@@ -4856,9 +4883,14 @@ async function recomputeJoinedPiecesInner(){
   } catch (err){
     console.error("recomputeJoinedPieces (worker) failed:", err);
     reportClientError("recomputeJoinedPieces worker failed: " + err.message, { stack: err.stack });
-    for (const j of manualJoints){ j.valid = false; j.reason = 'verify-failed'; }
-    computedPieces = null;
-    return;
+    // A failed attempt (e.g. the timeout above) is a reason to stop and
+    // tell the caller, not a reason to erase everything that was already
+    // known-good before this attempt started — computedPieces and every
+    // OTHER joint's valid/reason stay exactly as they were. Whichever
+    // caller triggered this recompute (tryAddJoint, most often) is
+    // responsible for deciding what THAT specific action's failure means
+    // (e.g. popping the one new joint that was being added).
+    throw err;
   }
 
   const byId = new Map(response.jointResults.map(r => [r.id, r]));
@@ -4877,6 +4909,23 @@ async function recomputeJoinedPiecesInner(){
     }
   }
   computedPieces = response.computedPieces;
+}
+
+// Shared by every recompute-triggering action that ISN'T tryAddJoint
+// (which needs its own more specific recovery — see there): delete, edit,
+// swap, and the "Connect to" dropdown all just need "if this failed, say
+// so and stop before rendering anything from a recompute that never
+// actually completed" — computedPieces/joints are already left untouched
+// by a failed attempt (see recomputeJoinedPiecesInner's catch), so there's
+// nothing further to undo here.
+async function safeRecompute(){
+  try {
+    await recomputeJoinedPieces();
+    return true;
+  } catch (err){
+    showJointMsg(err.message || "Something went wrong updating the connectors. Try again.", true);
+    return false;
+  }
 }
 
 function describeJointReason(reason){
@@ -4917,7 +4966,7 @@ async function deleteJointById(id){
   if (!id) return;
   manualJoints = manualJoints.filter(j => j.id !== id);
   if (selectedJointId === id) selectedJointId = null;
-  await recomputeJoinedPieces();
+  if (!(await safeRecompute())) return;
   renderPieces(lastSplitResult, parseFloat(bedXInput.value)||220, parseFloat(bedYInput.value)||220, parseFloat(bedZInput.value)||250);
   renderJointsList();
   refreshPartPreview();
@@ -5046,7 +5095,7 @@ async function updateJointField(id, field, value){
   if (!j) return;
   j[field] = value;
   if (field === 'sz'){ j.width = value; j.height = value; }
-  await recomputeJoinedPieces();
+  if (!(await safeRecompute())) return;
   renderPieces(lastSplitResult, parseFloat(bedXInput.value)||220, parseFloat(bedYInput.value)||220, parseFloat(bedZInput.value)||250);
   renderJointsList();
   refreshPartPreview();
@@ -5186,7 +5235,19 @@ async function tryAddJoint(axis, planeValue, dir, maleKey, femaleKey, p1, p2, or
   const joint = { id, axis, planeValue, dir, maleKey, femaleKey, p1, p2, sz, width:sz, height:sz, depth, clearance, type, femaleGap: femaleGap||0, valid:true, reason:null };
   if (orientedFrame){ joint.basis = orientedFrame.basis; joint.origin = orientedFrame.origin; }
   manualJoints.push(joint);
-  await recomputeJoinedPieces();
+  try {
+    await recomputeJoinedPieces();
+  } catch (err){
+    // the worker either crashed or (see runJoinComputation) hit its own
+    // timeout on this attempt — either way, this specific joint never got
+    // a real answer, so it can't be kept: pop it and try to recompute once
+    // more (a fresh worker exists post-timeout/crash) so the OTHER,
+    // already-valid joints on the model get redrawn without this one.
+    manualJoints.pop();
+    try { await recomputeJoinedPieces(); } catch (err2){ /* already reporting the original error below */ }
+    showJointMsg(err.message || "Couldn't place that connector — something went wrong. Try again or a different spot.", true);
+    return false;
+  }
 
   if (!joint.valid){
     manualJoints.pop();
