@@ -671,6 +671,1529 @@ if (new URLSearchParams(window.location.search).get("checkout") === "success"){
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script type="text/plain" id="csgWorkerSrc">
+function sub3(a,b){ return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
+function add3(a,b){ return [a[0]+b[0], a[1]+b[1], a[2]+b[2]]; }
+function scale3(a,s){ return [a[0]*s, a[1]*s, a[2]*s]; }
+function dot3(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+function cross3(a,b){ return [ a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0] ]; }
+function length3(a){ return Math.sqrt(dot3(a,a)); }
+function lerp3(a,b,t){ return [ a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t ]; }
+
+// an orthonormal (u,v,n) frame with n = the given surface normal — used to
+// carve a connector aligned to the ACTUAL clicked surface instead of
+// whichever global axis that surface happens to be closest to (see
+// carveJointClusterOriented). Same construction repairOpenEdges already uses
+// for an arbitrary cap plane: pick any vector not nearly parallel to normal,
+// cross it in to get a first tangent, then cross again for the second.
+function buildOrthonormalBasis(n){
+  const len = length3(n);
+  const normal = len > 1e-12 ? scale3(n, 1/len) : [0,0,1];
+  const arbitrary = Math.abs(normal[0]) < 0.9 ? [1,0,0] : [0,1,0];
+  let u = cross3(arbitrary, normal);
+  const ulen = length3(u) || 1;
+  u = scale3(u, 1/ulen);
+  const v = cross3(normal, u);
+  return [u, v, normal];
+}
+function worldToLocal(p, basis, origin){
+  const d = sub3(p, origin);
+  return [dot3(d,basis[0]), dot3(d,basis[1]), dot3(d,basis[2])];
+}
+function localToWorld(p, basis, origin){
+  return [
+    origin[0] + p[0]*basis[0][0] + p[1]*basis[1][0] + p[2]*basis[2][0],
+    origin[1] + p[0]*basis[0][1] + p[1]*basis[1][1] + p[2]*basis[2][1],
+    origin[2] + p[0]*basis[0][2] + p[1]*basis[1][2] + p[2]*basis[2][2]
+  ];
+}
+
+// a single failed joint placement can retry a local carve dozens of times
+// (every nudge x pad-level combination in tryAddJoint — see its own
+// comment), each rescanning the SAME pristine base piece to split it into
+// near/far regions (splitByLocalRegion, carveJointClusterOriented). Since
+// those pristine triangle arrays are never mutated once created, caching
+// each one's own bounding box by object identity turns that rescan from
+// full per-vertex arithmetic into a cache hit on every retry after the
+// first.
+const triBBoxCache = new WeakMap();
+function triBBoxCached(t){
+  let b = triBBoxCache.get(t);
+  if (!b){
+    const bMin=[Infinity,Infinity,Infinity], bMax=[-Infinity,-Infinity,-Infinity];
+    for (const v of t) for (let k=0;k<3;k++){ if (v[k]<bMin[k]) bMin[k]=v[k]; if (v[k]>bMax[k]) bMax[k]=v[k]; }
+    b = {min:bMin, max:bMax};
+    triBBoxCache.set(t, b);
+  }
+  return b;
+}
+
+function computeBBox(triangles){
+  const min=[Infinity,Infinity,Infinity], max=[-Infinity,-Infinity,-Infinity];
+  for (const tri of triangles) for (const v of tri) for (let a=0;a<3;a++){
+    if (v[a]<min[a]) min[a]=v[a];
+    if (v[a]>max[a]) max[a]=v[a];
+  }
+  return {min, max};
+}
+
+function triVolume(tri){ return dot3(tri[0], cross3(tri[1], tri[2])) / 6; }
+function meshVolume(triangles){ let v=0; for (const t of triangles) v+=triVolume(t); return v; }
+
+function checkWatertight(triangles, tol){
+  const counts = new Map();
+  const inv = 1/tol; // multiply once per point instead of dividing per point
+  for (const tri of triangles){
+    // each vertex's key only needs computing once per triangle (it's reused
+    // by both edges that meet there), not once per edge-endpoint reference —
+    // this alone halves the string-building work checkWatertight does, which
+    // matters because on a large mesh this cheap-looking scan is what
+    // actually dominates connector-placement time, not the geometric carve.
+    const k0 = Math.round(tri[0][0]*inv)+","+Math.round(tri[0][1]*inv)+","+Math.round(tri[0][2]*inv);
+    const k1 = Math.round(tri[1][0]*inv)+","+Math.round(tri[1][1]*inv)+","+Math.round(tri[1][2]*inv);
+    const k2 = Math.round(tri[2][0]*inv)+","+Math.round(tri[2][1]*inv)+","+Math.round(tri[2][2]*inv);
+    const edges = [[k0,k1],[k1,k2],[k2,k0]];
+    for (const [a,b] of edges){
+      const key = a<b ? a+"|"+b : b+"|"+a;
+      counts.set(key, (counts.get(key)||0)+1);
+    }
+  }
+  let open=0;
+  for (const v of counts.values()) if (v!==2) open++;
+  return { watertight: open===0, openEdges: open };
+}
+
+// The endpoint positions of every edge that ISN'T shared by exactly two
+// triangles — i.e. exactly the points checkWatertight already counts, just
+// returned as real coordinates instead of a bare number. Used to feed
+// csgWeldTJunctions extra weld candidates beyond the current cut's own new
+// vertices, so a T-junction left over from an EARLIER connector on the
+// same piece still gets a chance to close instead of silently compounding
+// through every cut placed after it (see csgSubtractTriangles).
+function openEdgeVertices(triangles, tol){
+  const inv = 1/tol;
+  const keyOf = v => Math.round(v[0]*inv)+","+Math.round(v[1]*inv)+","+Math.round(v[2]*inv);
+  const counts = new Map(), posOf = new Map();
+  for (const tri of triangles){
+    const k=[keyOf(tri[0]),keyOf(tri[1]),keyOf(tri[2])];
+    for (let i=0;i<3;i++) posOf.set(k[i], tri[i]);
+    const edges=[[k[0],k[1]],[k[1],k[2]],[k[2],k[0]]];
+    for (const [a,b] of edges){
+      const key = a<b ? a+"|"+b : b+"|"+a;
+      counts.set(key, (counts.get(key)||0)+1);
+    }
+  }
+  const verts = [];
+  for (const [key, count] of counts){
+    if (count === 2) continue;
+    const [a,b] = key.split("|");
+    verts.push(posOf.get(a), posOf.get(b));
+  }
+  return verts;
+}
+
+/* ---------- STL parsing ---------- */
+function parseSTL(buffer){
+  if (buffer.byteLength >= 84){
+    const view = new DataView(buffer);
+    const triCount = view.getUint32(80, true);
+    const expected = 84 + triCount*50;
+    if (expected === buffer.byteLength && triCount > 0){
+      return parseBinarySTL(view, triCount);
+    }
+  }
+  const text = new TextDecoder("utf-8").decode(buffer);
+  if (text.trim().toLowerCase().startsWith("solid")){
+    const tris = parseAsciiSTL(text);
+    if (tris.length > 0) return tris;
+  }
+  throw new Error("Could not recognize this file as a valid ASCII or binary STL.");
+}
+
+function parseBinarySTL(view, triCount){
+  const triangles = [];
+  let offset = 84;
+  for (let i=0;i<triCount;i++){
+    offset += 12; // skip stored facet normal
+    const verts = [];
+    for (let v=0; v<3; v++){
+      verts.push([ view.getFloat32(offset,true), view.getFloat32(offset+4,true), view.getFloat32(offset+8,true) ]);
+      offset += 12;
+    }
+    offset += 2; // attribute byte count
+    triangles.push(verts);
+  }
+  return triangles;
+}
+
+function parseAsciiSTL(text){
+  const re = /vertex\s+([\-+0-9.eE]+)\s+([\-+0-9.eE]+)\s+([\-+0-9.eE]+)/g;
+  const pts = [];
+  let m;
+  while ((m = re.exec(text)) !== null){
+    pts.push([parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3])]);
+  }
+  const triangles = [];
+  for (let i=0; i+2<pts.length; i+=3) triangles.push([pts[i], pts[i+1], pts[i+2]]);
+  return triangles;
+}
+
+function exportBinarySTL(triangles){
+  const n = triangles.length;
+  const buffer = new ArrayBuffer(84 + 50*n);
+  const view = new DataView(buffer);
+  for (let i=0;i<80;i++) view.setUint8(i, 0);
+  view.setUint32(80, n, true);
+  let offset = 84;
+  for (const tri of triangles){
+    const nrm = cross3(sub3(tri[1],tri[0]), sub3(tri[2],tri[0]));
+    const len = length3(nrm) || 1;
+    const un = [nrm[0]/len, nrm[1]/len, nrm[2]/len];
+    view.setFloat32(offset, un[0], true); view.setFloat32(offset+4, un[1], true); view.setFloat32(offset+8, un[2], true);
+    offset += 12;
+    for (const v of tri){
+      view.setFloat32(offset, v[0], true); view.setFloat32(offset+4, v[1], true); view.setFloat32(offset+8, v[2], true);
+      offset += 12;
+    }
+    view.setUint16(offset, 0, true);
+    offset += 2;
+  }
+  return new Uint8Array(buffer);
+}
+
+/* ---------- plane clip + cap (returns new triangle soup, kept side is watertight-capped) ---------- */
+const EPS_CLASS = 1e-9;
+
+function clipAndCap(triangles, axis, planeValue, keepGreater, tol){
+  const outwardNormal = [0,0,0];
+  outwardNormal[axis] = keepGreater ? -1 : 1;
+
+  function dist(v){ return keepGreater ? (planeValue - v[axis]) : (v[axis] - planeValue); }
+
+  const out = [];
+  const segments = [];
+
+  for (const tri of triangles){
+    const d = [dist(tri[0]), dist(tri[1]), dist(tri[2])];
+    const inside = [d[0] <= EPS_CLASS, d[1] <= EPS_CLASS, d[2] <= EPS_CLASS];
+    const insideCount = (inside[0]?1:0)+(inside[1]?1:0)+(inside[2]?1:0);
+
+    if (insideCount === 3){ out.push(tri); continue; }
+    if (insideCount === 0){ continue; }
+
+    const poly = [];
+    let exitPoint = null, entryPoint = null;
+    for (let i=0;i<3;i++){
+      const cur = tri[i], curD = d[i], curIn = inside[i];
+      const nextIdx = (i+1)%3;
+      const nxt = tri[nextIdx], nxtD = d[nextIdx], nxtIn = inside[nextIdx];
+      if (curIn) poly.push(cur);
+      if (curIn !== nxtIn){
+        const t = curD / (curD - nxtD);
+        const ip = lerp3(cur, nxt, t);
+        poly.push(ip);
+        // record by transition type (not walk order) so cap edges chain consistently
+        // regardless of which triangle edge happens to carry the crossing
+        if (curIn && !nxtIn) exitPoint = ip; else entryPoint = ip;
+      }
+    }
+    for (let i=1;i<poly.length-1;i++) out.push([poly[0], poly[i], poly[i+1]]);
+    if (exitPoint && entryPoint) segments.push({p1:exitPoint, p2:entryPoint});
+  }
+
+  const loops = chainSegments(segments, tol);
+  for (const loop of loops){
+    const capTris = triangulateLoop(loop, axis, tol);
+    for (const t of capTris){
+      const n = cross3(sub3(t[1],t[0]), sub3(t[2],t[0]));
+      if (dot3(n, outwardNormal) < 0) out.push([t[0], t[2], t[1]]);
+      else out.push(t);
+    }
+  }
+  // accumulated floating point drift across repeated clips occasionally produces
+  // a near-zero-area sliver (three almost-coincident points); such triangles add
+  // no real geometry but do add spurious/duplicate edges, so drop them here
+  return out.filter(t => !isDegenerateTriangle(t, tol));
+}
+
+// clips one convex polygon (3+ points, e.g. a triangle or an
+// already-once-clipped fragment of one) against a single half-space —
+// generalizes clipAndCap's inline per-triangle clip to any polygon size so
+// it can be applied repeatedly for multiple constraints in clipMultiPlane
+// below. Returns the kept polygon plus the one new boundary segment
+// introduced where this plane actually cuts it (none if the polygon didn't
+// cross the plane at all).
+function clipPolygonAgainstPlane(poly, axis, planeValue, keepGreater, tol){
+  function dist(v){ return keepGreater ? (planeValue - v[axis]) : (v[axis] - planeValue); }
+  const n = poly.length;
+  const d = poly.map(dist);
+  const inside = d.map(v => v <= EPS_CLASS);
+  const insideCount = inside.filter(Boolean).length;
+  if (insideCount === n) return { keptPoly: poly, seg: null };
+  if (insideCount === 0) return { keptPoly: [], seg: null };
+  const outPoly = [];
+  let exitPoint = null, entryPoint = null;
+  for (let i=0;i<n;i++){
+    const cur = poly[i], curD = d[i], curIn = inside[i];
+    const ni = (i+1)%n;
+    const nxt = poly[ni], nxtD = d[ni], nxtIn = inside[ni];
+    if (curIn) outPoly.push(cur);
+    if (curIn !== nxtIn){
+      const t = curD / (curD - nxtD);
+      const ip = lerp3(cur, nxt, t);
+      outPoly.push(ip);
+      if (curIn && !nxtIn) exitPoint = ip; else entryPoint = ip;
+    }
+  }
+  const seg = (exitPoint && entryPoint) ? { p1:exitPoint, p2:entryPoint } : null;
+  return { keptPoly: outPoly, seg };
+}
+
+// clips a mesh against several half-space constraints AT ONCE — each
+// `{axis, planeValue, keepGreater}` — and caps every exposed face in one
+// coherent pass, all traced back to each ORIGINAL triangle's own vertices.
+// This exists because chaining single-plane clipAndCap calls (each one
+// operating on the PREVIOUS clip's output, including its freshly-generated
+// cap triangles) measurably degrades on real-world meshes: a cap face's
+// synthetic triangulation doesn't have the same well-behaved structure the
+// next clip's segment-chaining assumes, and watertightness gets worse with
+// every additional axis cut instead of just being sliced further — the
+// same class of bug fixed in subtractBoxesGrid for the connector carving
+// code. Clipping every constraint straight from the pristine input (per
+// triangle, never from another constraint's cap output) avoids that
+// compounding entirely, at the cost of visiting every triangle once per
+// piece instead of once per cut — still cheap in practice since a triangle
+// clip is O(vertices).
+// derives constraint c's cap purely from where the ORIGINAL mesh crosses
+// its plane — i.e. exactly clipAndCap's own single-plane cap logic. This
+// is the one part of a multi-constraint clip that's safe to compute in
+// isolation: unlike the piece's other bounding planes, the cap face's own
+// full extent only depends on the pristine mesh, never on what any other
+// constraint will eventually trim off.
+function area2(a, b, c){ return (b[0]-a[0])*(c[1]-a[1]) - (c[0]-a[0])*(b[1]-a[1]); }
+
+// trims one straight segment to a half-space — the segment equivalent of
+// clipPolygonAgainstPlane, used to trim a cap's own natural boundary
+// segments down to the final piece's extent.
+function clipSegmentByPlane(seg, axis, planeValue, keepGreater){
+  function dist(v){ return keepGreater ? (planeValue - v[axis]) : (v[axis] - planeValue); }
+  const d1 = dist(seg.p1), d2 = dist(seg.p2);
+  const in1 = d1 <= EPS_CLASS, in2 = d2 <= EPS_CLASS;
+  if (in1 && in2) return seg;
+  if (!in1 && !in2) return null;
+  const t = d1 / (d1 - d2);
+  const ip = lerp3(seg.p1, seg.p2, t);
+  return in1 ? {p1:seg.p1, p2:ip} : {p1:ip, p2:seg.p2};
+}
+
+// finds where the line at (coord[axisA]=valA, coord[axisB]=valB), running
+// freely along freeAxis, actually passes through solid material — i.e.
+// where two of a piece's cut planes intersect each other, clipped to
+// wherever the mesh really has material. This line is the "ridge" where
+// two of a piece's cap faces meet inside the piece's interior; unlike
+// every other boundary edge, it isn't part of any original triangle (see
+// clipMultiPlane's comment), so the only way to find it is to intersect it
+// with the pristine mesh directly, the same way a point-in-solid raycast
+// works: collect every triangle the line threads through, in order, and
+// pair them up into alternating in/out intervals.
+function ridgeIntervals(triangles, axisA, valA, axisB, valB, freeAxis, tol){
+  const hits = [];
+  const q = [valA, valB];
+  for (const tri of triangles){
+    const p0 = [tri[0][axisA], tri[0][axisB]], p1 = [tri[1][axisA], tri[1][axisB]], p2 = [tri[2][axisA], tri[2][axisB]];
+    const full = area2(p0, p1, p2);
+    if (Math.abs(full) < 1e-12) continue;
+    const w0 = area2(q, p1, p2) / full;
+    const w1 = area2(p0, q, p2) / full;
+    const w2 = area2(p0, p1, q) / full;
+    const eps = -1e-7;
+    if (w0 < eps || w1 < eps || w2 < eps) continue;
+    hits.push(w0*tri[0][freeAxis] + w1*tri[1][freeAxis] + w2*tri[2][freeAxis]);
+  }
+  // the line frequently grazes a shared vertex/edge between several
+  // triangles at once (e.g. when it happens to line up with the mesh's own
+  // grid) — each of those triangles registers its own "hit" at the same
+  // physical point, which would otherwise get double- or sextuple-counted
+  // as separate crossings and pair up into degenerate zero-length
+  // intervals. Collapsing hits that land on the same point first recovers
+  // the true, single crossing before pairing them up.
+  hits.sort((a, b) => a - b);
+  const dedup = [];
+  for (const h of hits){
+    if (dedup.length === 0 || Math.abs(h - dedup[dedup.length-1]) > tol) dedup.push(h);
+  }
+  const intervals = [];
+  for (let i=0; i+1<dedup.length; i+=2) intervals.push([dedup[i], dedup[i+1]]);
+  return intervals;
+}
+
+function pointOnRidge(axisA, valA, axisB, valB, freeAxis, t){
+  const p = [0,0,0]; p[axisA] = valA; p[axisB] = valB; p[freeAxis] = t;
+  return p;
+}
+
+// clips a mesh against several half-space constraints AT ONCE — each
+// `{axis, planeValue, keepGreater}` — and caps every exposed face in one
+// coherent pass, all traced back to each ORIGINAL triangle's own vertices.
+// This exists because chaining single-plane clipAndCap calls (each one
+// operating on the PREVIOUS clip's output, including its freshly-generated
+// cap triangles) measurably degrades on real-world meshes: a cap face's
+// synthetic triangulation doesn't have the same well-behaved structure the
+// next clip's segment-chaining assumes, and watertightness gets worse with
+// every additional axis cut instead of just being sliced further — the
+// same class of bug fixed in subtractBoxesGrid for the connector carving
+// code.
+//
+// Where two or more constraints are active at once, each cap face's own
+// boundary comes from two different sources: the natural crossings where
+// the pristine mesh meets that constraint's plane (trimmed down to the
+// final piece's extent), plus one "ridge" segment per other active
+// constraint — the edge where this cap face meets that OTHER cap face,
+// found via ridgeIntervals above rather than from any single triangle.
+// Each ridge is computed exactly once per pair and handed to BOTH
+// constraints it borders (in opposite order, like any shared mesh edge
+// seen from its two adjacent faces) — that's the part that matters: two
+// caps independently re-deriving "the same" shared edge from their own
+// separate triangulations reliably land on slightly different points,
+// which is what left them unable to close against each other before.
+// Sharing one canonical pair of endpoints avoids that by construction.
+function clipMultiPlane(triangles, constraints, tol){
+  const N = constraints.length;
+  const bodyOut = [];
+
+  for (const tri of triangles){
+    // the fully-clipped body for this piece: apply every constraint in
+    // sequence, but always starting from this triangle's own 3 vertices.
+    let poly = [tri[0], tri[1], tri[2]];
+    for (let ci=0; ci<N && poly.length>=3; ci++){
+      poly = clipPolygonAgainstPlane(poly, constraints[ci].axis, constraints[ci].planeValue, constraints[ci].keepGreater, tol).keptPoly;
+    }
+    if (poly.length >= 3){
+      for (let i=1;i<poly.length-1;i++) bodyOut.push([poly[0], poly[i], poly[i+1]]);
+    }
+  }
+
+  const segmentsByConstraint = constraints.map(() => []);
+
+  // each constraint's natural segments: exactly clipAndCap's own
+  // single-plane crossing logic against the pristine mesh, then trimmed
+  // down to the final piece's extent by every other constraint.
+  for (let ci=0; ci<N; ci++){
+    const c = constraints[ci];
+    function dist(v){ return c.keepGreater ? (c.planeValue - v[c.axis]) : (v[c.axis] - c.planeValue); }
+    for (const tri of triangles){
+      const d = [dist(tri[0]), dist(tri[1]), dist(tri[2])];
+      const inside = [d[0] <= EPS_CLASS, d[1] <= EPS_CLASS, d[2] <= EPS_CLASS];
+      const insideCount = (inside[0]?1:0)+(inside[1]?1:0)+(inside[2]?1:0);
+      if (insideCount === 3 || insideCount === 0) continue;
+      let exitPoint = null, entryPoint = null;
+      for (let i=0;i<3;i++){
+        const cur = tri[i], curD = d[i], curIn = inside[i];
+        const ni = (i+1)%3;
+        const nxt = tri[ni], nxtD = d[ni], nxtIn = inside[ni];
+        if (curIn !== nxtIn){
+          const t = curD / (curD - nxtD);
+          const ip = lerp3(cur, nxt, t);
+          if (curIn && !nxtIn) exitPoint = ip; else entryPoint = ip;
+        }
+      }
+      if (!(exitPoint && entryPoint)) continue;
+      let seg = {p1:exitPoint, p2:entryPoint};
+      for (let cj=0; cj<N && seg; cj++){
+        if (cj===ci) continue;
+        seg = clipSegmentByPlane(seg, constraints[cj].axis, constraints[cj].planeValue, constraints[cj].keepGreater);
+      }
+      if (seg) segmentsByConstraint[ci].push(seg);
+    }
+  }
+
+  // one shared ridge per pair of active constraints, handed to both — and
+  // where a third (or fourth...) constraint is also active, that ridge
+  // still only spans as far as ITS piece actually reaches, so it gets
+  // trimmed by every other constraint too, exactly like the natural
+  // segments above.
+  //
+  // Which direction along the ridge counts as "forward" for constraint a's
+  // own loop isn't arbitrary — a's loop needs the kept material on a
+  // consistent side (the same convention triangulateLoop/earClipPolygon
+  // already assumes for every other edge), so it's derived the same way
+  // any boundary's direction is: walking direction × this face's own
+  // outward normal must point toward whatever the ridge's OTHER side
+  // (constraint b) excludes, i.e. toward b's own outward normal. Once a's
+  // own direction is pinned down that way, b's side of the same shared
+  // edge is simply the reverse — the same relationship any two faces of a
+  // solid have along the edge where they meet.
+  for (let ci=0; ci<N; ci++){
+    for (let cj=ci+1; cj<N; cj++){
+      const a = constraints[ci], b = constraints[cj];
+      const freeAxis = [0,1,2].find(ax => ax!==a.axis && ax!==b.axis);
+      const intervals = ridgeIntervals(triangles, a.axis, a.planeValue, b.axis, b.planeValue, freeAxis, tol);
+
+      const freeVec = [0,0,0]; freeVec[freeAxis] = 1;
+      const aOutward = [0,0,0]; aOutward[a.axis] = a.keepGreater ? -1 : 1;
+      const bOutward = [0,0,0]; bOutward[b.axis] = b.keepGreater ? -1 : 1;
+      const forwardForA = dot3(cross3(freeVec, aOutward), bOutward) < 0;
+
+      for (const [t0, t1] of intervals){
+        const tA = forwardForA ? t0 : t1, tB = forwardForA ? t1 : t0;
+        let seg = {
+          p1: pointOnRidge(a.axis, a.planeValue, b.axis, b.planeValue, freeAxis, tA),
+          p2: pointOnRidge(a.axis, a.planeValue, b.axis, b.planeValue, freeAxis, tB)
+        };
+        for (let ck=0; ck<N && seg; ck++){
+          if (ck===ci || ck===cj) continue;
+          seg = clipSegmentByPlane(seg, constraints[ck].axis, constraints[ck].planeValue, constraints[ck].keepGreater);
+        }
+        if (!seg) continue;
+        segmentsByConstraint[ci].push({p1:seg.p1, p2:seg.p2});
+        segmentsByConstraint[cj].push({p1:seg.p2, p2:seg.p1});
+      }
+    }
+  }
+
+  for (let ci=0; ci<N; ci++){
+    const c = constraints[ci];
+    const loops = chainSegments(segmentsByConstraint[ci], tol);
+    const outwardNormal = [0,0,0];
+    outwardNormal[c.axis] = c.keepGreater ? -1 : 1;
+    for (const loop of loops){
+      const capTris = triangulateLoop(loop, c.axis, tol);
+      for (const t of capTris){
+        const n = cross3(sub3(t[1],t[0]), sub3(t[2],t[0]));
+        bodyOut.push(dot3(n, outwardNormal) < 0 ? [t[0], t[2], t[1]] : t);
+      }
+    }
+  }
+
+  // dropping near-zero-area slivers is normally a safe cleanup step, but on
+  // a dense ear-clipped loop (e.g. triangulateLoop's fan over a hundred-
+  // plus-point boundary) some of its legitimately valid triangles are
+  // themselves thin enough to trip the same heuristic — and unlike a true
+  // degenerate sliver, throwing those away leaves a real gap. So the
+  // filter is only kept if it actually improves things; if the mesh is
+  // watertight either way, or filtering makes it WORSE, the unfiltered
+  // (but genuinely closed) triangle set wins.
+  const unfiltered = bodyOut;
+  const filtered = bodyOut.filter(t => !isDegenerateTriangle(t, tol));
+  const wtFiltered = checkWatertight(filtered, tol);
+  const wtUnfiltered = checkWatertight(unfiltered, tol);
+  return wtFiltered.openEdges <= wtUnfiltered.openEdges ? filtered : unfiltered;
+}
+
+function isDegenerateTriangle(t, tol){
+  const e0 = length3(sub3(t[1],t[0])), e1 = length3(sub3(t[2],t[1])), e2 = length3(sub3(t[0],t[2]));
+  const maxEdge = Math.max(e0,e1,e2);
+  if (maxEdge < tol) return true;
+  const area = length3(cross3(sub3(t[1],t[0]), sub3(t[2],t[0]))) / 2;
+  return area < 0.5 * maxEdge * tol;
+}
+
+function chainSegments(segments, tol){
+  const keyOf = p => Math.round(p[0]/tol)+","+Math.round(p[1]/tol)+","+Math.round(p[2]/tol);
+  const startIndex = new Map();
+  segments.forEach((s,i)=>{
+    const k = keyOf(s.p1);
+    if (!startIndex.has(k)) startIndex.set(k, []);
+    startIndex.get(k).push(i);
+  });
+  const used = new Array(segments.length).fill(false);
+  const loops = [];
+  for (let i=0;i<segments.length;i++){
+    if (used[i]) continue;
+    const loop = [segments[i].p1];
+    const startKey = keyOf(segments[i].p1);
+    let curEnd = segments[i].p2;
+    used[i] = true;
+    let guard = 0;
+    while (keyOf(curEnd) !== startKey && guard < segments.length+5){
+      guard++;
+      const candidates = startIndex.get(keyOf(curEnd)) || [];
+      let found = -1;
+      for (const c of candidates) if (!used[c]) { found = c; break; }
+      if (found === -1) break;
+      used[found] = true;
+      loop.push(segments[found].p1);
+      curEnd = segments[found].p2;
+    }
+    if (keyOf(curEnd) === startKey && loop.length >= 3) loops.push(loop);
+  }
+  return loops;
+}
+
+function sign2(p1,p2,p3){ return (p1[0]-p3[0])*(p2[1]-p3[1]) - (p2[0]-p3[0])*(p1[1]-p3[1]); }
+function pointInTriangle2D(p,a,b,c,eps){
+  const d1=sign2(p,a,b), d2=sign2(p,b,c), d3=sign2(p,c,a);
+  const hasNeg = (d1<-eps)||(d2<-eps)||(d3<-eps);
+  const hasPos = (d1>eps)||(d2>eps)||(d3>eps);
+  return !(hasNeg && hasPos);
+}
+
+function dedupeConsecutive(pts, tol){
+  // adjacent triangle pairs sharing a diagonal often each contribute a segment
+  // that starts at the exact same physical point, producing back-to-back
+  // duplicate loop vertices; those zero-length hops make every ear look
+  // degenerate to the convexity test below, so merge them out first
+  const out = [];
+  for (const p of pts){
+    if (out.length === 0 || length3(sub3(p, out[out.length-1])) > tol) out.push(p);
+  }
+  if (out.length > 1 && length3(sub3(out[0], out[out.length-1])) <= tol) out.pop();
+  return out;
+}
+
+function earClipPolygon(pts2dIn, pts3dIn){
+  let pts2d = pts2dIn, pts3d = pts3dIn;
+  function area(pts){ let s=0; for (let i=0;i<pts.length;i++){ const a=pts[i], b=pts[(i+1)%pts.length]; s += a[0]*b[1]-b[0]*a[1]; } return s/2; }
+  if (area(pts2d) < 0){ pts2d = pts2d.slice().reverse(); pts3d = pts3d.slice().reverse(); }
+
+  // epsilon scaled to the loop's own size: cross-products here are ~length^2,
+  // and after several rounds of clipping, "collinear" points from an earlier
+  // cap's edge are common — they must not register as strictly convex/concave
+  // or they'll wrongly block valid ears / count as degenerate slivers.
+  let maxCoord = 0;
+  for (const p of pts2d) maxCoord = Math.max(maxCoord, Math.abs(p[0]), Math.abs(p[1]));
+  const eps = Math.max(maxCoord*maxCoord, 1) * 1e-10;
+
+  let indices = pts2d.map((_,i)=>i);
+  const tris = [];
+  let guard = 0;
+  const guardMax = indices.length*indices.length + 20;
+
+  while (indices.length > 3 && guard < guardMax){
+    guard++;
+    let earFound = false;
+    for (let ii=0; ii<indices.length; ii++){
+      const iPrev = indices[(ii-1+indices.length)%indices.length];
+      const iCur = indices[ii];
+      const iNext = indices[(ii+1)%indices.length];
+      const a=pts2d[iPrev], b=pts2d[iCur], c=pts2d[iNext];
+      const crossZ = (b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0]);
+      if (crossZ <= eps) continue;
+      let contains = false;
+      for (const jj of indices){
+        if (jj===iPrev||jj===iCur||jj===iNext) continue;
+        if (pointInTriangle2D(pts2d[jj], a,b,c,eps)){ contains = true; break; }
+      }
+      if (contains) continue;
+      tris.push([iPrev, iCur, iNext]);
+      indices.splice(ii,1);
+      earFound = true;
+      break;
+    }
+    if (!earFound) break;
+  }
+  if (indices.length >= 3){
+    for (let i=1;i<indices.length-1;i++) tris.push([indices[0], indices[i], indices[i+1]]);
+  }
+  // drop any near-zero-area triangles (degenerate/collinear slivers) so they
+  // can't introduce duplicate or unmatched edges in the final piece
+  const realTris = tris.filter(([i,j,k]) => {
+    const a=pts2d[i], b=pts2d[j], c=pts2d[k];
+    const a2 = Math.abs((b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0]));
+    return a2 > eps;
+  });
+  return realTris.map(([i,j,k]) => [pts3d[i], pts3d[j], pts3d[k]]);
+}
+
+function triangulateLoop(loopPtsRaw, axis, tol){
+  const loopPts = dedupeConsecutive(loopPtsRaw, tol);
+  if (loopPts.length < 3) return [];
+  const axes = [0,1,2].filter(a=>a!==axis);
+  const pts2d = loopPts.map(p=>[p[axes[0]], p[axes[1]]]);
+  return earClipPolygon(pts2d, loopPts.slice());
+}
+
+function repairOpenEdges(triangles, tol){
+  // last-resort safety net: after many sequential clips, rare coincidental
+  // vertex alignments (e.g. a cut plane passing exactly through an existing
+  // vertex) can leave a handful of edges uncapped. Rather than chase every
+  // such coincidence in the clipper itself, find any leftover open boundary
+  // here and patch it directly so the exported STL is always watertight.
+  const keyOf = p => Math.round(p[0]/tol)+","+Math.round(p[1]/tol)+","+Math.round(p[2]/tol);
+  const edgeExists = new Set();
+  for (const t of triangles){
+    const edges = [[t[0],t[1]],[t[1],t[2]],[t[2],t[0]]];
+    for (const [a,b] of edges) edgeExists.add(keyOf(a)+">"+keyOf(b));
+  }
+  const openSegs = [];
+  const seen = new Set();
+  for (const t of triangles){
+    const edges = [[t[0],t[1]],[t[1],t[2]],[t[2],t[0]]];
+    for (const [a,b] of edges){
+      const fk = keyOf(a)+">"+keyOf(b);
+      if (seen.has(fk)) continue;
+      seen.add(fk);
+      if (!edgeExists.has(keyOf(b)+">"+keyOf(a))) openSegs.push({p1:a, p2:b});
+    }
+  }
+  if (openSegs.length === 0) return triangles;
+
+  const loops = chainSegments(openSegs, tol);
+  const extra = [];
+  for (const loopRaw of loops){
+    const loop = dedupeConsecutive(loopRaw, tol);
+    if (loop.length < 3) continue;
+    let nx=0, ny=0, nz=0;
+    for (let i=0;i<loop.length;i++){
+      const p = loop[i], q = loop[(i+1)%loop.length];
+      nx += (p[1]-q[1])*(p[2]+q[2]);
+      ny += (p[2]-q[2])*(p[0]+q[0]);
+      nz += (p[0]-q[0])*(p[1]+q[1]);
+    }
+    const nlen = length3([nx,ny,nz]);
+    if (nlen < 1e-12) continue;
+    const normal = [nx/nlen, ny/nlen, nz/nlen];
+    const arbitrary = Math.abs(normal[0]) < 0.9 ? [1,0,0] : [0,1,0];
+    let u = cross3(arbitrary, normal);
+    const ulen = length3(u);
+    if (ulen < 1e-12) continue;
+    u = [u[0]/ulen, u[1]/ulen, u[2]/ulen];
+    const v = cross3(normal, u);
+    const pts2d = loop.map(p => [dot3(p,u), dot3(p,v)]);
+    const capTris = earClipPolygon(pts2d, loop.slice());
+    for (const t of capTris){
+      const n = cross3(sub3(t[1],t[0]), sub3(t[2],t[0]));
+      extra.push(dot3(n, normal) < 0 ? [t[0], t[2], t[1]] : t);
+    }
+  }
+  return triangles.concat(extra.filter(t => !isDegenerateTriangle(t, tol)));
+}
+
+/* ---------- alignment tabs / sockets (print-friendly stand-in for biscuit joints) ---------- */
+function makeBoxTriangles(min, max){
+  return makeBoxWalls(min, max, null, null, false);
+}
+
+// builds the 6 (or 5, if one is skipped) faces of an axis-aligned box.
+// outward:false gives the usual solid-box surface; outward:true flips every
+// triangle so the faces point INTO the box instead — that's what a cavity's
+// walls need to look like from the surrounding material's point of view.
+function makeBoxWalls(min, max, skipAxis, skipSide, inward, skipSide2){
+  const x0=min[0],y0=min[1],z0=min[2],x1=max[0],y1=max[1],z1=max[2];
+  const v = [
+    [x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],
+    [x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]
+  ];
+  const faces = [
+    {idx:[0,1,2,3], n:[0,0,-1], axis:2, side:-1},
+    {idx:[4,5,6,7], n:[0,0,1],  axis:2, side:1},
+    {idx:[0,1,5,4], n:[0,-1,0], axis:1, side:-1},
+    {idx:[3,2,6,7], n:[0,1,0],  axis:1, side:1},
+    {idx:[0,4,7,3], n:[-1,0,0], axis:0, side:-1},
+    {idx:[1,5,6,2], n:[1,0,0],  axis:0, side:1}
+  ];
+  const tris = [];
+  for (const f of faces){
+    if (skipAxis!=null && f.axis===skipAxis && (f.side===skipSide || f.side===skipSide2)) continue;
+    const quad = f.idx.map(i=>v[i]);
+    for (let t of [[quad[0],quad[1],quad[2]], [quad[0],quad[2],quad[3]]]){
+      let n = cross3(sub3(t[1],t[0]), sub3(t[2],t[0]));
+      if (dot3(n, f.n) < 0) t = [t[0], t[2], t[1]];
+      if (inward) t = [t[0], t[2], t[1]];
+      tris.push(t);
+    }
+  }
+  return tris;
+}
+
+// a standalone extruded regular polygon (octagon by default) along `axis`,
+// centered at (c1,c2) in the plane perpendicular to it, from axisMin to
+// axisMax. Used for the "round pins" joint style — an octagon reads as a
+// round peg once printed, and being a self-contained closed solid (like
+// makeBoxTriangles) it's purely additive, so it carries none of the boolean-
+// subtraction risk a true cylindrical socket would.
+function makeExtrudedPolygonTriangles(axis, c1, c2, axisMin, axisMax, radius, sides){
+  const axes = [0,1,2].filter(a=>a!==axis);
+  const ringLo = [], ringHi = [];
+  for (let k=0;k<sides;k++){
+    const ang = k*2*Math.PI/sides;
+    const p1 = c1 + radius*Math.cos(ang), p2 = c2 + radius*Math.sin(ang);
+    const lo=[0,0,0], hi=[0,0,0];
+    lo[axis]=axisMin; lo[axes[0]]=p1; lo[axes[1]]=p2;
+    hi[axis]=axisMax; hi[axes[0]]=p1; hi[axes[1]]=p2;
+    ringLo.push(lo); ringHi.push(hi);
+  }
+  const tris = [];
+  const outN = [0,0,0]; // reused scratch for expected side-face outward direction
+  for (let k=0;k<sides;k++){
+    const kn = (k+1)%sides;
+    const quad = [ringLo[k], ringLo[kn], ringHi[kn], ringHi[k]];
+    const ang = (k+0.5)*2*Math.PI/sides;
+    const n=[0,0,0]; n[axes[0]]=Math.cos(ang); n[axes[1]]=Math.sin(ang);
+    for (let t of [[quad[0],quad[1],quad[2]], [quad[0],quad[2],quad[3]]]){
+      let fn = cross3(sub3(t[1],t[0]), sub3(t[2],t[0]));
+      if (dot3(fn, n) < 0) t = [t[0], t[2], t[1]];
+      tris.push(t);
+    }
+  }
+  // end caps: fan from the ring around the center point at each end
+  const centerLo=[0,0,0], centerHi=[0,0,0];
+  centerLo[axis]=axisMin; centerLo[axes[0]]=c1; centerLo[axes[1]]=c2;
+  centerHi[axis]=axisMax; centerHi[axes[0]]=c1; centerHi[axes[1]]=c2;
+  const nLo=[0,0,0]; nLo[axis]=-1;
+  const nHi=[0,0,0]; nHi[axis]=1;
+  for (let k=0;k<sides;k++){
+    const kn=(k+1)%sides;
+    let tLo=[centerLo, ringLo[k], ringLo[kn]];
+    let fnLo = cross3(sub3(tLo[1],tLo[0]), sub3(tLo[2],tLo[0]));
+    if (dot3(fnLo,nLo)<0) tLo=[tLo[0],tLo[2],tLo[1]];
+    tris.push(tLo);
+    let tHi=[centerHi, ringHi[k], ringHi[kn]];
+    let fnHi = cross3(sub3(tHi[1],tHi[0]), sub3(tHi[2],tHi[0]));
+    if (dot3(fnHi,nHi)<0) tHi=[tHi[0],tHi[2],tHi[1]];
+    tris.push(tHi);
+  }
+  return tris;
+}
+
+// same per-triangle half-space clip as clipAndCap's first half, but leaves
+// the cut boundary open (no cap) — used below where the cap belongs to a
+// different piece of geometry, so adding one here would just double it up.
+function clipOpen(triangles, axis, planeValue, keepGreater){
+  function dist(v){ return keepGreater ? (planeValue - v[axis]) : (v[axis] - planeValue); }
+  const out = [];
+  for (const tri of triangles){
+    const d = [dist(tri[0]), dist(tri[1]), dist(tri[2])];
+    const inside = [d[0] <= EPS_CLASS, d[1] <= EPS_CLASS, d[2] <= EPS_CLASS];
+    const insideCount = (inside[0]?1:0)+(inside[1]?1:0)+(inside[2]?1:0);
+    if (insideCount === 3){ out.push(tri); continue; }
+    if (insideCount === 0) continue;
+    const poly = [];
+    for (let i=0;i<3;i++){
+      const cur = tri[i], curD = d[i], curIn = inside[i];
+      const nextIdx = (i+1)%3;
+      const nxt = tri[nextIdx], nxtD = d[nextIdx], nxtIn = inside[nextIdx];
+      if (curIn) poly.push(cur);
+      if (curIn !== nxtIn){
+        const t = curD / (curD - nxtD);
+        poly.push(lerp3(cur, nxt, t));
+      }
+    }
+    for (let i=1;i<poly.length-1;i++) out.push([poly[0], poly[i], poly[i+1]]);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------
+// Real CSG (constructive solid geometry) boolean engine.
+//
+// A direct port of the classic BSP-tree boolean algorithm (the same
+// approach used by widely-trusted CSG kernels) to this app's plain
+// [x,y,z]-array triangle representation. This is what makes the female
+// socket a TRUE geometric subtraction of the connector's real solid body
+// from the piece's actual mesh — not an axis-aligned box carved against a
+// locally-flat approximation of the surface. That approximation was the
+// root cause behind this system's whole history of bugs (buried sockets,
+// misaligned depth, thin-sliver failures, oversized holes): it worked
+// only where the surface near the click happened to be simple and flat,
+// and organic models routinely aren't. A real boolean finds the actual
+// intersection regardless of how curved, thin, or complex the surface is.
+// ---------------------------------------------------------------------
+const CSG_EPS = 1e-5;
+
+// Populated (as a fresh array) by csgSubtractTriangles for the duration of
+// one boolean, and read back afterward to know exactly which points to
+// weld T-junctions at — see the note on CsgPlane.prototype.splitPolygon's
+// SPANNING case for why these particular points are the complete set.
+let csgTrackedSplitVerts = null;
+
+function CsgVertex(pos){ this.pos = pos; }
+CsgVertex.prototype.clone = function(){ return new CsgVertex(this.pos.slice()); };
+CsgVertex.prototype.interpolate = function(other, t){ return new CsgVertex(lerp3(this.pos, other.pos, t)); };
+
+function CsgPlane(normal, w){ this.normal = normal; this.w = w; }
+CsgPlane.fromPoints = function(a,b,c){
+  let n = cross3(sub3(b,a), sub3(c,a));
+  const len = length3(n) || 1;
+  n = scale3(n, 1/len);
+  return new CsgPlane(n, dot3(n,a));
+};
+CsgPlane.prototype.clone = function(){ return new CsgPlane(this.normal.slice(), this.w); };
+CsgPlane.prototype.flip = function(){ this.normal = scale3(this.normal,-1); this.w = -this.w; };
+// classifies + (if needed) clips `polygon` against this plane, appending
+// results into whichever of the four buckets apply — coplanar pieces go to
+// coplanarFront/Back based on which way they face, straddling pieces are
+// split into a front fragment and a back fragment.
+CsgPlane.prototype.splitPolygon = function(polygon, coplanarFront, coplanarBack, front, back){
+  const COPLANAR=0, FRONT=1, BACK=2, SPANNING=3;
+  const types = [];
+  let polygonType = 0;
+  for (const v of polygon.vertices){
+    const t = dot3(this.normal, v.pos) - this.w;
+    const type = t < -CSG_EPS ? BACK : t > CSG_EPS ? FRONT : COPLANAR;
+    polygonType |= type;
+    types.push(type);
+  }
+  switch (polygonType){
+    case COPLANAR:
+      (dot3(this.normal, polygon.plane.normal) > 0 ? coplanarFront : coplanarBack).push(polygon);
+      break;
+    case FRONT: front.push(polygon); break;
+    case BACK: back.push(polygon); break;
+    case SPANNING: {
+      const f=[], b=[];
+      for (let i=0;i<polygon.vertices.length;i++){
+        const j=(i+1)%polygon.vertices.length;
+        const ti=types[i], tj=types[j];
+        const vi=polygon.vertices[i], vj=polygon.vertices[j];
+        if (ti !== BACK) f.push(vi);
+        if (ti !== FRONT) b.push(vi);
+        if ((ti|tj)===SPANNING){
+          const denom = dot3(this.normal, sub3(vj.pos, vi.pos));
+          const t = (this.w - dot3(this.normal, vi.pos)) / denom;
+          const v = vi.interpolate(vj, t);
+          f.push(v); b.push(v);
+          // this new point is exactly the kind of place a T-junction can
+          // form: it's a real vertex here, but a neighboring polygon that
+          // never got split by this same plane has no vertex at this spot
+          // — its edge just passes through it. Recording it here means the
+          // weld pass afterward only has to check these specific points
+          // instead of every vertex in the whole piece.
+          if (csgTrackedSplitVerts) csgTrackedSplitVerts.push(v.pos);
+        }
+      }
+      if (f.length>=3) front.push(new CsgPolygon(f));
+      if (b.length>=3) back.push(new CsgPolygon(b));
+      break;
+    }
+  }
+};
+
+function CsgPolygon(vertices){
+  this.vertices = vertices;
+  this.plane = CsgPlane.fromPoints(vertices[0].pos, vertices[1].pos, vertices[2].pos);
+}
+CsgPolygon.prototype.clone = function(){ return new CsgPolygon(this.vertices.map(v=>v.clone())); };
+CsgPolygon.prototype.flip = function(){ this.vertices.reverse(); this.plane.flip(); };
+
+function CsgNode(polygons){
+  this.plane = null; this.front = null; this.back = null; this.polygons = [];
+  if (polygons && polygons.length) this.build(polygons);
+}
+// All four of these were originally the textbook straight-recursive BSP
+// algorithm (recurse into front, recurse into back). That's fine for a
+// shallow tree, but this app rebuilds a fresh tree from scratch on every
+// single connector cut, and a piece that already carries several earlier
+// connectors' worth of fragmented geometry can produce a tree deep enough
+// to blow the JS call stack outright — confirmed by direct testing on a
+// real organic model: placing a second connector near an already-cut area
+// threw "RangeError: Maximum call stack size exceeded" from inside
+// CsgNode.build, which surfaced to the user as a silent "geometry couldn't
+// be generated cleanly" rejection. An explicit work stack on the heap has
+// no such depth limit — these are otherwise the exact same algorithms,
+// same results, just not relying on the native call stack to hold state.
+CsgNode.prototype.invert = function(){
+  const stack = [this];
+  while (stack.length){
+    const node = stack.pop();
+    for (const p of node.polygons) p.flip();
+    if (node.plane) node.plane.flip();
+    const tmp = node.front; node.front = node.back; node.back = tmp;
+    if (node.front) stack.push(node.front);
+    if (node.back) stack.push(node.back);
+  }
+};
+// Unlike invert/clipTo/allPolygons/build (which only ever need to VISIT
+// every node), this one's recursive shape returns a value front/back calls
+// must both finish before their parent can concatenate them — an iterative
+// equivalent needs an explicit stack of pending "call frames" that records
+// where each result should be written once its subtree finishes, mirroring
+// exactly what the native call stack would otherwise be holding.
+CsgNode.prototype.clipPolygons = function(rootPolygons){
+  const root = { node:this, polygons:rootPolygons, parent:null, slot:null, state:0 };
+  const stack = [root];
+  let rootResult = null;
+  while (stack.length){
+    const f = stack[stack.length-1];
+    if (f.state === 0){
+      if (!f.node.plane){
+        stack.pop();
+        const res = f.polygons.slice();
+        if (f.parent) f.parent[f.slot] = res; else rootResult = res;
+        continue;
+      }
+      const front=[], back=[];
+      for (const p of f.polygons) f.node.plane.splitPolygon(p, front, back, front, back);
+      f.pendingBack = back;
+      f.state = 1;
+      if (f.node.front){
+        stack.push({ node:f.node.front, polygons:front, parent:f, slot:'frontResult', state:0 });
+      } else {
+        f.frontResult = front;
+      }
+      continue;
+    }
+    if (f.state === 1){
+      f.state = 2;
+      if (f.node.back){
+        stack.push({ node:f.node.back, polygons:f.pendingBack, parent:f, slot:'backResult', state:0 });
+      } else {
+        f.backResult = [];
+      }
+      continue;
+    }
+    // state 2: both children (if any) have already written their results
+    // into this frame — safe to concatenate and hand back up.
+    stack.pop();
+    const res = f.frontResult.concat(f.backResult);
+    if (f.parent) f.parent[f.slot] = res; else rootResult = res;
+  }
+  return rootResult;
+};
+CsgNode.prototype.clipTo = function(bsp){
+  const stack = [this];
+  while (stack.length){
+    const node = stack.pop();
+    node.polygons = bsp.clipPolygons(node.polygons);
+    if (node.front) stack.push(node.front);
+    if (node.back) stack.push(node.back);
+  }
+};
+CsgNode.prototype.allPolygons = function(){
+  const result = [];
+  const stack = [this];
+  while (stack.length){
+    const node = stack.pop();
+    for (const p of node.polygons) result.push(p);
+    if (node.front) stack.push(node.front);
+    if (node.back) stack.push(node.back);
+  }
+  return result;
+};
+CsgNode.prototype.build = function(rootPolygons){
+  const stack = [{ node:this, polygons:rootPolygons }];
+  while (stack.length){
+    const { node, polygons } = stack.pop();
+    if (!polygons.length) continue;
+    if (!node.plane) node.plane = polygons[0].plane.clone();
+    const front=[], back=[];
+    for (const p of polygons) node.plane.splitPolygon(p, node.polygons, node.polygons, front, back);
+    if (front.length){ if (!node.front) node.front = new CsgNode(); stack.push({ node:node.front, polygons:front }); }
+    if (back.length){ if (!node.back) node.back = new CsgNode(); stack.push({ node:node.back, polygons:back }); }
+  }
+};
+
+function csgPolygonsFromTriangles(triangles){
+  return triangles.map(t => new CsgPolygon(t.map(p => new CsgVertex(p))));
+}
+// BSP clipping only ever produces CONVEX fragments from convex inputs
+// (every triangle is convex, and splitting a convex polygon with a plane
+// yields convex pieces), so a simple fan triangulation from vertex 0 is
+// always a valid, correct triangulation here — no ear-clipping needed.
+function csgTrianglesFromPolygons(polygons){
+  const tris = [];
+  for (const poly of polygons){
+    for (let i=1;i<poly.vertices.length-1;i++){
+      tris.push([poly.vertices[0].pos, poly.vertices[i].pos, poly.vertices[i+1].pos]);
+    }
+  }
+  return tris;
+}
+
+// A BSP tree clips each polygon it visits independently against whatever
+// nodes it happens to pass through — a polygon lying entirely on one side
+// of some splitting plane never gets divided there at all, while a
+// NEIGHBORING polygon that straddles that same plane does. Both fragments
+// are individually correct, but the undivided one's edge can pass straight
+// through a point that the divided one now has a real vertex at — a
+// T-junction: one side of a shared boundary has one edge, the other side
+// has that same span broken into two. Confirmed by direct testing on a
+// plain box-minus-box subtraction (about as simple as a cut gets): a
+// vertex the cutter's own corner introduced was left dangling mid-edge on
+// an adjacent uncut face, producing open edges despite the overall
+// geometry (triangle count, area, volume) being exactly correct. This
+// finds every triangle with a "foreign" vertex sitting exactly on one of
+// its own edges and re-splits it there, which is what actually closes a
+// boundary like that rather than leaving it merely near-matching.
+//
+// `candidates` is the exact set of points this specific cut could possibly
+// have introduced a T-junction at — every vertex the boolean created by
+// splitting an edge (see splitPolygon's SPANNING case, captured live via
+// csgTrackedSplitVerts). A piece's other, older vertices from earlier cuts
+// weren't touched by this one and can't be the cause of a new T-junction,
+// so they never need to be considered here — this is what keeps a weld
+// pass cheap regardless of how many prior connectors already live on the
+// same piece, instead of it rescanning the whole piece every time.
+function csgWeldTJunctions(triangles, tol, candidates){
+  if (candidates.length === 0) return triangles;
+
+  function splitOnce(t){
+    for (let i=0;i<3;i++){
+      const p0=t[i], p1=t[(i+1)%3], p2=t[(i+2)%3];
+      const edgeVec = sub3(p1,p0);
+      const edgeLen2 = dot3(edgeVec,edgeVec);
+      if (edgeLen2 < tol*tol) continue;
+      for (const v of candidates){
+        if (length3(sub3(v,p0))<tol || length3(sub3(v,p1))<tol) continue;
+        const t0 = dot3(sub3(v,p0), edgeVec)/edgeLen2;
+        if (t0<=1e-4 || t0>=1-1e-4) continue;
+        const proj = add3(p0, scale3(edgeVec, t0));
+        if (length3(sub3(proj,v)) < tol) return [[p0,v,p2],[v,p1,p2]];
+      }
+    }
+    return null;
+  }
+
+  let current = triangles;
+  for (let pass=0; pass<8; pass++){
+    let changed = false;
+    const next = [];
+    for (const t of current){
+      const split = splitOnce(t);
+      if (split){ next.push(...split); changed = true; } else next.push(t);
+    }
+    current = next;
+    if (!changed) break;
+  }
+  return current;
+}
+
+// A minus B: the real solid-geometry subtraction. Both inputs must be
+// closed, watertight, correctly-outward-facing triangle solids (every
+// procedural connector shape this app builds already is). The core
+// formula — invert A, clip each to the other, rebuild — is the standard
+// BSP CSG subtraction identity; not something invented for this app. The
+// T-junction weld afterward, restricted to the cutter's own (padded)
+// bounding region, is what makes the result actually watertight rather
+// than merely correct in shape.
+function csgSubtractTriangles(aTriangles, bTriangles){
+  if (aTriangles.length === 0) return [];
+  if (bTriangles.length === 0) return aTriangles.slice();
+  const a = new CsgNode(csgPolygonsFromTriangles(aTriangles));
+  const b = new CsgNode(csgPolygonsFromTriangles(bTriangles));
+  csgTrackedSplitVerts = [];
+  a.invert();
+  a.clipTo(b);
+  b.clipTo(a);
+  b.invert();
+  b.clipTo(a);
+  b.invert();
+  a.build(b.allPolygons());
+  a.invert();
+  const splitVerts = csgTrackedSplitVerts;
+  csgTrackedSplitVerts = null;
+  let result = csgTrianglesFromPolygons(a.allPolygons());
+
+  // Repeated interpolation near a shallow-angle plane intersection (a
+  // cylinder's ring meeting a box face at a near-tangent angle, say) can
+  // produce a cluster of vertices that are only microscopically distinct —
+  // real numerical noise, not real geometry. Left alone, the T-junction
+  // weld below treats each one as a separate point and can spin up dozens
+  // of near-zero-area sliver triangles trying to reconcile them (confirmed
+  // by direct testing: a single pin connector produced edges "shared" by
+  // 6, 10, even 22 triangles at what should be one clean vertex). Snapping
+  // every vertex to a fine grid first collapses that whole cluster back
+  // into the one point it actually represents, before it ever reaches the
+  // weld pass.
+  const snapInv = 1/1e-3;
+  const snapMap = new Map();
+  function snap(v){
+    const key = Math.round(v[0]*snapInv)+","+Math.round(v[1]*snapInv)+","+Math.round(v[2]*snapInv);
+    let p = snapMap.get(key);
+    if (!p){ p = [Math.round(v[0]*snapInv)/snapInv, Math.round(v[1]*snapInv)/snapInv, Math.round(v[2]*snapInv)/snapInv]; snapMap.set(key, p); }
+    return p;
+  }
+  result = result
+    .map(t => t.map(snap))
+    .filter(t => !isDegenerateTriangle(t, 1e-6));
+
+  // BSP splitting planes are infinite — the cutter's own cap plane still
+  // slices any face of A that crosses it anywhere, however far that face
+  // is from the cutter's actual bounded footprint (confirmed by direct
+  // testing: a cube's SIDE wall, nowhere near the cutter in two of three
+  // axes, still picked up a stray T-junction exactly at the cutter's cap
+  // height). So the affected region isn't just "near the cutter" — it's
+  // anywhere in A that any of B's planes reach, which sounds like it could
+  // be all of A — but "reach" only ever means "introduce a new vertex by
+  // splitting an edge there" (see splitPolygon's SPANNING case), and every
+  // one of those new vertices was captured directly, live, as it was
+  // created, into splitVerts. That is the EXACT and COMPLETE set of points
+  // a T-junction can possibly form at — nothing else in the mesh moved.
+  // Using it directly instead of re-deriving "everywhere nearby" from a
+  // whole-piece bounding box is what fixes this: welding used to rescan
+  // every vertex already in the piece (hundreds, growing with every prior
+  // connector) against every triangle, on every one of up to 4 tolerance
+  // attempts — confirmed by direct testing to be over 95% of a cut's total
+  // time, and the dominant reason cuts got dramatically slower as more
+  // connectors piled up on the same piece. A piece's OLD, already-settled
+  // vertices from earlier cuts were never candidates for a NEW T-junction
+  // this cut could introduce, so they never needed to be in the search at
+  // all.
+  const checkTol = 1e-3;
+  const snappedSplitVerts = [];
+  const seenSplit = new Set();
+  function addCandidate(v){
+    const p = snap(v);
+    const key = p[0]+","+p[1]+","+p[2];
+    if (!seenSplit.has(key)){ seenSplit.add(key); snappedSplitVerts.push(p); }
+  }
+  for (const v of splitVerts) addCandidate(v);
+  // `result` can already be non-watertight before this cut's own weld even
+  // runs — e.g. a prior connector on this same piece whose own T-junction
+  // weld didn't fully close (see csgSubtractTriangles's tolerance-retry
+  // loop, which keeps whichever attempt measurably won, not necessarily a
+  // perfect one). Those leftover open-edge points aren't new vertices FROM
+  // this cut, so splitVerts alone wouldn't include them — but they're still
+  // real candidates worth another attempt here, or every connector placed
+  // after a slightly-imperfect one would inherit and compound its debt
+  // forever. This stays cheap because it's still bounded by how many edges
+  // are actually open, not by the piece's full vertex count.
+  for (const v of openEdgeVertices(result, checkTol)) addCandidate(v);
+  // A tolerance wide enough to close every T-junction (needed for shallow-
+  // angle cases like a cylinder meeting a box face) is also wide enough to
+  // occasionally match a vertex that ISN'T really a T-junction, splitting a
+  // triangle that didn't need it and — confirmed by direct testing on a
+  // mesh already carrying several earlier connectors' cuts — actively
+  // making watertightness worse (215 open edges, versus 8 with a tighter
+  // tolerance). Rather than picking one tolerance and hoping it's right for
+  // every case, try progressively looser ones and keep whichever actually
+  // produces the fewest open edges — never a looser attempt just because
+  // it ran later, only because it measurably won.
+  let best = result, bestOpen = checkWatertight(result, checkTol).openEdges;
+  for (const tolTry of [1e-3, 2e-3, 5e-3, 1e-2]){
+    if (bestOpen === 0) break;
+    const attempt = csgWeldTJunctions(result, tolTry, snappedSplitVerts);
+    const open = checkWatertight(attempt, checkTol).openEdges;
+    if (open < bestOpen){ best = attempt; bestOpen = open; }
+  }
+  // Whatever's left after welding tends to be a handful of genuinely
+  // isolated small gaps (a single missing triangle at a shallow-angle
+  // intersection, say — confirmed by direct testing: 3 open edges forming
+  // exactly one triangle's own boundary loop) rather than a systemic
+  // T-junction. A real CSG result has no legitimate "must stay open"
+  // boundary the way the old box-carve's socket mouth did (a blind pocket
+  // IS a closed solid — walls, floor, and the surrounding rim all connect;
+  // see buildConnectorPair's own notes), so it's safe to hand any remainder
+  // to the existing ear-clipping repair pass without the old capsMouth risk
+  // of sealing something that was meant to stay open.
+  if (bestOpen > 0){
+    const repaired = repairOpenEdges(best, checkTol);
+    const repairedOpen = checkWatertight(repaired, checkTol).openEdges;
+    if (repairedOpen < bestOpen) best = repaired;
+  }
+  return best;
+}
+
+// JoiningPoint: the single source of truth for one connector.
+//
+// Every field a connector needs lives on this one object — Connector ID
+// (id), 3D position (axis/planeValue/p1/p2 for an axis-aligned seam, or
+// origin for an oriented/organic-surface click), Surface normal + Rotation
+// (basis, or the implicit axis/dir frame for axis-aligned joints),
+// Connector type (type), Width/Height (width, height), Depth (depth),
+// Clearance (clearance), and Connected Part A / Part B (maleKey, femaleKey).
+//
+// buildConnectorPair() below is the ONLY function that turns a JoiningPoint
+// into geometry, and it always produces both halves (the male tab AND the
+// female socket boxes) together, in one call, from these same numbers —
+// there is no separate code path that could compute one half differently
+// from the other. That is what guarantees the two halves can never drift
+// apart: they are not two calculations that happen to agree, they are one
+// calculation whose output is used twice (once welded onto Part A, once
+// subtracted from Part B).
+// ---------------------------------------------------------------------
+function buildConnectorPair(jp){
+  const axis = jp.axis, planeValue = jp.planeValue, dir = jp.dir, p1 = jp.p1, p2 = jp.p2;
+  const depth = jp.depth, tol = jp.tol, userClearance = jp.clearance;
+  const width = jp.width != null ? jp.width : jp.sz;
+  const height = jp.height != null ? jp.height : jp.sz;
+  const useStyle = jp.type || 'keys';
+  // On a "click anywhere" organic-surface connector, the female piece isn't
+  // necessarily flush against the exact point clicked — it's just whichever
+  // piece is closest, which can still be a few mm away along the surface
+  // normal. Carving the socket starting exactly at the click origin (gap=0)
+  // then buries the whole cavity that many mm inside the female piece's
+  // solid, never reaching its real outer skin — confirmed by direct
+  // testing, a socket carved this way is invisible from outside because it
+  // never breaks through to the actual surface. gap shifts where the
+  // socket starts (and protrude below extends the male tab to match) so
+  // the cavity is carved starting at the female's REAL surface instead of
+  // at the male's click point. Zero for seam clicks, where the two
+  // surfaces are already known to coincide exactly.
+  const gap = Math.max(0, jp.femaleGap || 0);
+  const protrude = Math.max(1.0, depth != null ? depth : Math.min(width,height)*0.4) + gap;
+  const embed = Math.max(0.5, Math.min(width,height)*0.2);
+  const clearance = Math.max(0.08, userClearance != null ? userClearance : Math.min(width,height)*0.03);
+  const halfW = width/2, halfH = height/2;
+  const bump = Math.max(0.6, Math.min(width,height)*0.25); // how much wider a dovetail's head is than its shaft, per side
+  // clearance is a TOTAL per-dimension allowance, not a per-side one: a
+  // male width of 8.00mm with clearance 0.20mm must produce a female width
+  // of exactly 8.20mm (matching it on both sides evenly means each side
+  // only opens up by half the clearance).
+  const halfClearance = clearance / 2;
+
+  const axes = [0,1,2].filter(a=>a!==axis);
+  // "outer" size is the widest the joint ever gets — for keys/pins that's
+  // the whole feature, for a dovetail it's the flared head.
+  const outer1 = halfW + (useStyle==='dovetail'?bump:0);
+  const outer2 = halfH + (useStyle==='dovetail'?bump:0);
+
+  let tabTriangles, cutterTriangles;
+  // how far the cutter solid's own end faces extend PAST the male tab's
+  // real geometry, on both the entry and far end. A cutter whose entry
+  // face landed exactly ON the (assumed) surface would only tangentially
+  // touch the female piece's ACTUAL surface — which can be a little off
+  // from that assumption (see femaleGap) — instead of slicing cleanly
+  // through it, which is what a real boolean subtraction needs to produce
+  // a clean, open cut rather than a knife-edge coincident face.
+  const CUT_MARGIN = 1.0;
+
+  if (useStyle === 'pins'){
+    const radius = Math.min(outer1, outer2);
+    const eAxis0 = dir>0 ? planeValue-embed : planeValue-protrude;
+    const eAxis1 = dir>0 ? planeValue+protrude : planeValue+embed;
+    tabTriangles = makeExtrudedPolygonTriangles(axis, p1, p2, eAxis0, eAxis1, radius, 8);
+    // the socket for a round peg is a round hole — not a box around one,
+    // which is what this app used to build (an approximation the "never
+    // approximate" requirement rules out now that real CSG makes an exact
+    // cylindrical cut just as easy as a box one).
+    const cutMin = dir>0 ? planeValue-CUT_MARGIN : planeValue-protrude-CUT_MARGIN;
+    const cutMax = dir>0 ? planeValue+protrude+CUT_MARGIN : planeValue+CUT_MARGIN;
+    cutterTriangles = makeExtrudedPolygonTriangles(axis, p1, p2, cutMin, cutMax, radius+halfClearance, 16);
+
+  } else if (useStyle === 'dovetail'){
+    const shaftLen = protrude*0.45;
+    const shaft1 = Math.max(0.5, outer1-bump), shaft2 = Math.max(0.5, outer2-bump);
+    const shaftTabMin=[0,0,0], shaftTabMax=[0,0,0];
+    const headTabMin=[0,0,0], headTabMax=[0,0,0];
+    if (dir > 0){
+      shaftTabMin[axis]=planeValue-embed; shaftTabMax[axis]=planeValue+shaftLen;
+      headTabMin[axis]=planeValue+shaftLen; headTabMax[axis]=planeValue+protrude;
+    } else {
+      shaftTabMin[axis]=planeValue-shaftLen; shaftTabMax[axis]=planeValue+embed;
+      headTabMin[axis]=planeValue-protrude; headTabMax[axis]=planeValue-shaftLen;
+    }
+    shaftTabMin[axes[0]]=p1-shaft1; shaftTabMax[axes[0]]=p1+shaft1;
+    shaftTabMin[axes[1]]=p2-shaft2; shaftTabMax[axes[1]]=p2+shaft2;
+    headTabMin[axes[0]]=p1-outer1; headTabMax[axes[0]]=p1+outer1;
+    headTabMin[axes[1]]=p2-outer2; headTabMax[axes[1]]=p2+outer2;
+    tabTriangles = makeBoxTriangles(shaftTabMin, shaftTabMax).concat(makeBoxTriangles(headTabMin, headTabMax));
+
+    const shaftCutMin=[0,0,0], shaftCutMax=[0,0,0], headCutMin=[0,0,0], headCutMax=[0,0,0];
+    if (dir > 0){
+      shaftCutMin[axis]=planeValue-CUT_MARGIN; shaftCutMax[axis]=planeValue+shaftLen;
+      headCutMin[axis]=planeValue+shaftLen; headCutMax[axis]=planeValue+protrude+CUT_MARGIN;
+    } else {
+      shaftCutMin[axis]=planeValue-shaftLen; shaftCutMax[axis]=planeValue+CUT_MARGIN;
+      headCutMin[axis]=planeValue-protrude-CUT_MARGIN; headCutMax[axis]=planeValue-shaftLen;
+    }
+    shaftCutMin[axes[0]]=p1-shaft1-halfClearance; shaftCutMax[axes[0]]=p1+shaft1+halfClearance;
+    shaftCutMin[axes[1]]=p2-shaft2-halfClearance; shaftCutMax[axes[1]]=p2+shaft2+halfClearance;
+    headCutMin[axes[0]]=p1-outer1-halfClearance; headCutMax[axes[0]]=p1+outer1+halfClearance;
+    headCutMin[axes[1]]=p2-outer2-halfClearance; headCutMax[axes[1]]=p2+outer2+halfClearance;
+    // the shaft and head cutters are concatenated into one solid mesh, not
+    // unioned first — real CSG subtraction against a B mesh made of several
+    // disjoint (here: exactly abutting, non-overlapping) closed solids is
+    // still a well-defined, correct boolean, so there's no need to union
+    // them before subtracting.
+    cutterTriangles = makeBoxTriangles(shaftCutMin, shaftCutMax).concat(makeBoxTriangles(headCutMin, headCutMax));
+
+  } else { // 'keys' — straight rectangular tab/socket
+    const tabMin=[0,0,0], tabMax=[0,0,0];
+    tabMin[axis] = dir>0 ? planeValue-embed : planeValue-protrude;
+    tabMax[axis] = dir>0 ? planeValue+protrude : planeValue+embed;
+    tabMin[axes[0]]=p1-outer1; tabMax[axes[0]]=p1+outer1;
+    tabMin[axes[1]]=p2-outer2; tabMax[axes[1]]=p2+outer2;
+    tabTriangles = makeBoxTriangles(tabMin, tabMax);
+
+    const cutMin=[0,0,0], cutMax=[0,0,0];
+    cutMin[axis] = dir>0 ? planeValue-CUT_MARGIN : planeValue-protrude-CUT_MARGIN;
+    cutMax[axis] = dir>0 ? planeValue+protrude+CUT_MARGIN : planeValue+CUT_MARGIN;
+    cutMin[axes[0]]=p1-outer1-halfClearance; cutMax[axes[0]]=p1+outer1+halfClearance;
+    cutMin[axes[1]]=p2-outer2-halfClearance; cutMax[axes[1]]=p2+outer2+halfClearance;
+    cutterTriangles = makeBoxTriangles(cutMin, cutMax);
+  }
+
+  // outerW/outerH/clearanceUsed are the exact numbers this call actually
+  // used to size the male half — validateJoiningPoint compares the female
+  // cutter against these directly, so "clearance was applied correctly" is
+  // checked against the real inputs to this generation, not recomputed
+  // independently (which could hide a bug that affects both computations
+  // the same way).
+  return { ok:true, tabTriangles, cutterTriangles, outerW:outer1, outerH:outer2, clearanceUsed:clearance };
+}
+
+/* ---------- grid split ---------- */
+
+function pieceKeyOf(p){ return p.col+","+p.row+","+p.layer; }
+
+function rayTriangleT(origin, dir, tri){
+  const e1 = sub3(tri[1], tri[0]), e2 = sub3(tri[2], tri[0]);
+  const pvec = cross3(dir, e2);
+  const det = dot3(e1, pvec);
+  if (Math.abs(det) < 1e-12) return null;
+  const invDet = 1/det;
+  const tvec = sub3(origin, tri[0]);
+  const u = dot3(tvec, pvec) * invDet;
+  if (u < -1e-6 || u > 1+1e-6) return null;
+  const qvec = cross3(tvec, e1);
+  const v = dot3(dir, qvec) * invDet;
+  if (v < -1e-6 || u+v > 1+1e-6) return null;
+  const t = dot3(e2, qvec) * invDet;
+  return t > 1e-6 ? t : null;
+}
+
+function raySortedHits(triangles, origin, dir, tol){
+  const hits = [];
+  for (const t of triangles){
+    const tt = rayTriangleT(origin, dir, t);
+    if (tt !== null) hits.push(tt);
+  }
+  hits.sort((a,b)=>a-b);
+  const eps = Math.max(tol||0, 1e-4) * 10;
+  const deduped = [];
+  for (const h of hits){
+    if (deduped.length === 0 || h - deduped[deduped.length-1] > eps) deduped.push(h);
+  }
+  return deduped;
+}
+
+function jointOriginAndNormal(j){
+  if (j.basis) return { originPt: j.origin, normal: j.basis[2] };
+  const normal = [0,0,0]; normal[j.axis] = j.dir;
+  const originPt = [0,0,0]; originPt[j.axis] = j.planeValue;
+  const axes = [0,1,2].filter(a=>a!==j.axis);
+  originPt[axes[0]] = j.p1; originPt[axes[1]] = j.p2;
+  return { originPt, normal };
+}
+
+function checkConnectorFit(j, geo, malePiece, femalePiece){
+  const maxDim = Math.max(j.width||j.sz, j.height||j.sz);
+  const maleBBox = computeBBox(malePiece.triangles);
+  const femaleBBox = computeBBox(femalePiece.triangles);
+  const maleSmallest = Math.min(maleBBox.max[0]-maleBBox.min[0], maleBBox.max[1]-maleBBox.min[1], maleBBox.max[2]-maleBBox.min[2]);
+  const femaleSmallest = Math.min(femaleBBox.max[0]-femaleBBox.min[0], femaleBBox.max[1]-femaleBBox.min[1], femaleBBox.max[2]-femaleBBox.min[2]);
+  const partSmallest = Math.min(maleSmallest, femaleSmallest);
+  if (maxDim > partSmallest * 0.7){
+    return { ok:false, reason:'too-big' };
+  }
+
+  const { originPt, normal } = jointOriginAndNormal(j);
+  const invNormal = [-normal[0], -normal[1], -normal[2]];
+
+  // male side: how much solid material is actually behind the click point
+  // for the tab's embed to sit in — embed is small (~20% of size) so this
+  // rarely trips, but a very thin male wall can still get punched through.
+  const maleHits = raySortedHits(malePiece.triangles, originPt, invNormal);
+  const embed = Math.max(0.5, Math.min(j.width||j.sz, j.height||j.sz)*0.2);
+  if (maleHits.length > 0 && embed > maleHits[0] + 1e-6){
+    return { ok:false, reason:'too-long' };
+  }
+
+  // female side: real material thickness from where the socket starts
+  // (its own real surface, not the click point — see femaleGap) to where
+  // it would exit the other side. Needs the depth+clearance-slack span to
+  // fit inside that, or the socket punches all the way through.
+  //
+  // The entry point is already known (femaleGap, 0 for a flush seam) — it
+  // is NOT something to detect from the ray. A ray cast from a point
+  // sitting exactly ON that entry surface only ever reports the FAR wall
+  // (the near one lands at t≈0 and gets filtered out as behind-the-origin
+  // noise), so requiring two hits before checking anything, as an earlier
+  // version of this did, meant the check silently never fired for the
+  // common case of a joint starting flush on a real surface — confirmed
+  // by direct testing, a 30mm-deep connector on 13mm-thick material was
+  // accepted outright. Instead, take the entry as given and look for
+  // whichever hit comes after it.
+  const gapT = j.femaleGap || 0;
+  const exitHit = raySortedHits(femalePiece.triangles, originPt, normal).find(h => h > gapT + 1e-3);
+  if (exitHit !== undefined){
+    const thickness = exitHit - gapT;
+    const neededDepth = (j.depth) + 0.6;
+    if (neededDepth > thickness){
+      return { ok:false, reason:'too-long' };
+    }
+  }
+
+  return { ok:true };
+}
+
+function computeJoinedPiecesCore(manualJointsIn, basePieces, tol){
+  const baseByKey = new Map();
+  for (const p of basePieces) baseByKey.set(pieceKeyOf(p), p);
+
+  const byFemaleKey = new Map();
+  for (const j of manualJointsIn){
+    if (!byFemaleKey.has(j.femaleKey)) byFemaleKey.set(j.femaleKey, []);
+    byFemaleKey.get(j.femaleKey).push(j);
+  }
+
+  const invTol = 1/tol;
+  const triKey = t => t.map(v => Math.round(v[0]*invTol)+","+Math.round(v[1]*invTol)+","+Math.round(v[2]*invTol)).join("|");
+
+  const jointResults = new Map();
+  const femaleResultByKey = new Map();
+  for (const [femaleKey, joints] of byFemaleKey){
+    const basePiece = baseByKey.get(femaleKey);
+    if (!basePiece){ for (const j of joints){ jointResults.set(j.id, { valid:false, reason:'piece-missing' }); } continue; }
+
+    let femaleTriangles = basePiece.triangles;
+    for (const j of joints){
+      try {
+        const maleBase = baseByKey.get(j.maleKey);
+        if (!maleBase){ jointResults.set(j.id, { valid:false, reason:'piece-missing' }); continue; }
+
+        const geo = buildConnectorPair({ axis:j.axis, planeValue:j.planeValue, dir:j.dir, p1:j.p1, p2:j.p2, sz:j.sz, width:j.width, height:j.height, depth:j.depth, tol, type:j.type, clearance:j.clearance, femaleGap:j.femaleGap });
+        if (!geo.ok){ jointResults.set(j.id, { valid:false, reason:geo.reason }); continue; }
+
+        const fit = checkConnectorFit(j, geo, maleBase, basePiece);
+        if (!fit.ok){ jointResults.set(j.id, { valid:false, reason:fit.reason }); continue; }
+
+        const cutterWorld = j.basis
+          ? geo.cutterTriangles.map(t => t.map(v => localToWorld(v, j.basis, j.origin)))
+          : geo.cutterTriangles;
+        const afterCut = csgSubtractTriangles(femaleTriangles, cutterWorld);
+
+        const beforeKeys = new Set(femaleTriangles.map(triKey));
+        const genuinelyChanged = afterCut.length !== femaleTriangles.length || afterCut.some(t => !beforeKeys.has(triKey(t)));
+        if (!genuinelyChanged){ jointResults.set(j.id, { valid:false, reason:'no-cavity' }); continue; }
+
+        const maleTabTriangles = j.basis
+          ? geo.tabTriangles.map(t => t.map(v => localToWorld(v, j.basis, j.origin)))
+          : geo.tabTriangles;
+        jointResults.set(j.id, { valid:true, reason:null, maleTabTriangles });
+        femaleTriangles = afterCut;
+      } catch (err){
+        jointResults.set(j.id, { valid:false, reason:'verify-failed', error:{ message: err.message, stack: err.stack }, femaleTriCountAtFailure: femaleTriangles.length });
+      }
+    }
+    femaleResultByKey.set(femaleKey, femaleTriangles);
+  }
+
+  const working = new Map();
+  for (const [key, basePiece] of baseByKey){
+    const triangles = femaleResultByKey.has(key) ? femaleResultByKey.get(key) : basePiece.triangles;
+    working.set(key, { col:basePiece.col, row:basePiece.row, layer:basePiece.layer, triangles });
+  }
+  for (const j of manualJointsIn){
+    const r = jointResults.get(j.id);
+    if (r && r.valid && r.maleTabTriangles){
+      const male = working.get(j.maleKey);
+      if (male) male.triangles = male.triangles.concat(r.maleTabTriangles);
+    }
+  }
+
+  return {
+    computedPieces: [...working.values()],
+    jointResults: [...jointResults.entries()].map(([id, r]) => ({
+      id, valid: r.valid, reason: r.reason,
+      maleTabTrianglesExported: r.valid ? r.maleTabTriangles : null,
+      error: r.error || null,
+      femaleTriCountAtFailure: r.femaleTriCountAtFailure
+    }))
+  };
+}
+
+self.onmessage = function(e){
+  const { reqId, manualJoints, basePieces, tol } = e.data;
+  try {
+    const result = computeJoinedPiecesCore(manualJoints, basePieces, tol);
+    self.postMessage({ reqId, ok:true, result });
+  } catch (err){
+    self.postMessage({ reqId, ok:false, error: { message: err.message, stack: err.stack } });
+  }
+};
+</script>
 <script>
 (function(){
 "use strict";
@@ -698,6 +2221,47 @@ function reportClientError(message, context){
       }).then(()=>{}, ()=>{});
     }).catch(()=>{});
   } catch (e) { /* never let error reporting itself throw */ }
+}
+
+// Placing a connector on a piece that already carries several others can
+// take multiple seconds of real CSG work (see csgSubtractTriangles) — long
+// enough that running it on the main thread froze the page hard enough for
+// Chrome's own "Page Unresponsive" prompt to appear, confirmed by direct
+// user report. The actual geometry code is entirely pure math (no DOM, no
+// THREE.js) — see the hidden #csgWorkerSrc script tag, the exact same
+// engine, just not wired into this page's own UI code — so it can run on a
+// background thread with zero behavior change, just without ever blocking
+// the tab the user is trying to interact with.
+let csgWorker = null;
+let csgWorkerReqId = 0;
+const csgWorkerPending = new Map();
+function getCsgWorker(){
+  if (csgWorker) return csgWorker;
+  const src = document.getElementById('csgWorkerSrc').textContent;
+  const blobUrl = URL.createObjectURL(new Blob([src], { type: 'application/javascript' }));
+  csgWorker = new Worker(blobUrl);
+  csgWorker.onmessage = (e) => {
+    const { reqId, ok, result, error } = e.data;
+    const pending = csgWorkerPending.get(reqId);
+    if (!pending) return;
+    csgWorkerPending.delete(reqId);
+    if (ok) pending.resolve(result); else pending.reject(new Error(error && error.message || 'Worker error'));
+  };
+  csgWorker.onerror = (e) => {
+    // a worker-level error (e.g. a syntax error in the embedded source)
+    // has no reqId to route to a specific caller — reject everything
+    // outstanding rather than leaving those promises hanging forever.
+    for (const { reject } of csgWorkerPending.values()) reject(new Error(e.message || 'Worker crashed'));
+    csgWorkerPending.clear();
+  };
+  return csgWorker;
+}
+function runJoinComputation(manualJointsPlain, basePieces, tol){
+  return new Promise((resolve, reject) => {
+    const reqId = ++csgWorkerReqId;
+    csgWorkerPending.set(reqId, { resolve, reject });
+    getCsgWorker().postMessage({ reqId, manualJoints: manualJointsPlain, basePieces, tol });
+  });
 }
 
 /* ---------- small vector helpers (triangles are [ [x,y,z], [x,y,z], [x,y,z] ]) ---------- */
@@ -2210,6 +3774,17 @@ let previewMesh, previewMarkersGroup, previewHighlightMesh, previewSeamHighlight
 let previewPieceIndex = null;
 let previewOpen = false;
 let previewAddMode = false;
+// The CSG work behind a click now runs in a background Worker (see
+// tryAddJoint/recomputeJoinedPieces) and can take real seconds, during
+// which the page stays fully interactive — including to another click on
+// the same "Add" mode before the first one has resolved. Two overlapping
+// placements would both read and mutate the shared manualJoints array
+// independently, and whichever worker response lands second would
+// overwrite computedPieces with a result computed from a manualJoints
+// snapshot that may already be stale. Serializing on this flag keeps
+// placements one-at-a-time, same as the old synchronous version always
+// was by construction.
+let joinComputationInFlight = false;
 const previewRaycaster = new THREE.Raycaster();
 
 function initViewer(){
@@ -2541,7 +4116,7 @@ function previewHandleMouseMove(event){
 // the direction the clicked surface faces, falling back to the first other
 // available piece when there's no such neighbor; either way it can be
 // changed afterward from the "Connect to" dropdown in the joint panel.
-function previewHandleClick(event){
+async function previewHandleClick(event){
   if (previewPieceIndex == null || !previewMesh || !lastSplitResult || !computedPieces) return;
   const rect = previewRenderer.domElement.getBoundingClientRect();
   const mouse = new THREE.Vector2(
@@ -2560,6 +4135,10 @@ function previewHandleClick(event){
   }
 
   if (!previewAddMode) return;
+  if (joinComputationInFlight){
+    showJointMsg("Still placing the last connector — one moment.", true);
+    return;
+  }
 
   const hits = previewRaycaster.intersectObject(previewMesh, false);
   if (hits.length === 0){
@@ -2668,14 +4247,26 @@ function previewHandleClick(event){
   // outright.
   const femaleGap = rawRayGap <= straightLineGap*3 + 10 ? rawRayGap : straightLineGap;
 
+  // The actual CSG work below runs in a background Worker (see
+  // tryAddJoint/recomputeJoinedPieces), so the page itself stays fully
+  // responsive — but it can still take a few real seconds of computation
+  // on a piece that already has other geometry, and a click that visibly
+  // does nothing for that long reads as broken even though it's working.
+  showJointMsg("Placing connector…", false);
+
   // the connector is carved in its own local frame (aligned to the true,
   // unsnapped clicked-surface normal), which is always centered exactly on
   // the clicked point: axis=2/planeValue=0/
   // p1=0/p2=0 in that frame, with dir=+1 meaning "protrudes outward from the
   // surface you clicked", exactly like an axis-aligned joint with dir=+1.
-  const beforeCount = manualJoints.length;
-  tryAddJoint(2, 0, +1, maleKey, femaleKey, 0, 0, { basis: hitInfo.basis, origin: hitInfo.origin }, femaleGap);
-  if (manualJoints.length > beforeCount){
+  joinComputationInFlight = true;
+  let placed;
+  try {
+    placed = await tryAddJoint(2, 0, +1, maleKey, femaleKey, 0, 0, { basis: hitInfo.basis, origin: hitInfo.origin }, femaleGap);
+  } finally {
+    joinComputationInFlight = false;
+  }
+  if (placed){
     selectJoint(manualJoints[manualJoints.length-1].id);
     // leaving "add" mode armed after a successful placement left its own
     // settings panel (type/size/depth/clearance + a paragraph of hint text)
@@ -2774,9 +4365,9 @@ function renderPreviewJointPanel(){
       '<button id="ppmMoveBtn" class="btn-secondary">Move</button>' +
       '<button id="ppmDeleteBtn" class="btn-secondary">Delete</button>' +
     '</div>';
-  document.getElementById("ppmConnectSelect").addEventListener("change", (e)=>{
+  document.getElementById("ppmConnectSelect").addEventListener("change", async (e)=>{
     if (isMale) j.femaleKey = e.target.value; else j.maleKey = e.target.value;
-    recomputeJoinedPieces();
+    await recomputeJoinedPieces();
     renderPieces(lastSplitResult, parseFloat(bedXInput.value)||220, parseFloat(bedYInput.value)||220, parseFloat(bedZInput.value)||250);
     renderJointsList();
     refreshPartPreview();
@@ -2788,10 +4379,10 @@ function renderPreviewJointPanel(){
   document.getElementById("ppmSizeInput").addEventListener("change", (e)=> updateJointField(j.id, 'sz', Math.max(2, parseFloat(e.target.value)||j.sz)));
   document.getElementById("ppmDepthInput").addEventListener("change", (e)=> updateJointField(j.id, 'depth', Math.max(1, parseFloat(e.target.value)||j.depth)));
   document.getElementById("ppmClearanceInput").addEventListener("change", (e)=> updateJointField(j.id, 'clearance', Math.max(0.05, parseFloat(e.target.value)||j.clearance)));
-  document.getElementById("ppmSwapBtn").addEventListener("click", ()=>{
+  document.getElementById("ppmSwapBtn").addEventListener("click", async ()=>{
     j.dir = -j.dir;
     const tmp = j.maleKey; j.maleKey = j.femaleKey; j.femaleKey = tmp;
-    recomputeJoinedPieces();
+    await recomputeJoinedPieces();
     renderPieces(lastSplitResult, parseFloat(bedXInput.value)||220, parseFloat(bedYInput.value)||220, parseFloat(bedZInput.value)||250);
     renderJointsList();
     refreshPartPreview();
@@ -2965,7 +4556,7 @@ splitBtn.addEventListener("click", ()=>{
   statusEl.textContent = "Splitting...";
   splitBtn.disabled = true;
 
-  setTimeout(()=>{
+  setTimeout(async ()=>{
     try {
       // margin includes JOINT_EXTRA_MARGIN unconditionally now: since joints
       // are placed manually at any point *after* splitting, there's no
@@ -2977,7 +4568,7 @@ splitBtn.addEventListener("click", ()=>{
       manualJoints = [];
       selectedJointId = null;
       nextJointNum = 1;
-      recomputeJoinedPieces();
+      await recomputeJoinedPieces();
       renderPieces(result, bedX, bedY, bedZ);
       addJointBtn.disabled = result.pieces.length < 2;
     } catch(err){
@@ -3232,113 +4823,60 @@ function nearestOtherPiece(pieces, excludeKey, point){
 // of the earlier clustering/padding/repair machinery this used to need
 // (all of it existed purely to work around the box-carve approach's own
 // limitations) is necessary with a real boolean engine.
+// Every caller (add/delete/edit/swap) reads manualJoints, awaits the
+// worker, then writes computedPieces — the old fully-synchronous version
+// could never interleave two of these because JS itself was serializing
+// everything on the main thread. Now that the actual work happens off-
+// thread, two triggered in close succession (e.g. two rapid clicks) COULD
+// otherwise race: whichever worker response lands second would overwrite
+// computedPieces with a result computed from a manualJoints snapshot that
+// may already be stale relative to what the first call's response applied
+// afterward. Chaining every call onto one shared promise queue restores
+// the same one-at-a-time guarantee the synchronous version always had, for
+// every caller, without any of them needing to know about each other.
+let recomputeQueue = Promise.resolve();
 function recomputeJoinedPieces(){
+  const run = recomputeQueue.then(recomputeJoinedPiecesInner);
+  recomputeQueue = run.catch(()=>{});
+  return run;
+}
+async function recomputeJoinedPiecesInner(){
   if (!lastSplitResult){ computedPieces = null; return; }
-  const baseByKey = new Map();
-  for (const p of lastSplitResult.pieces) baseByKey.set(pieceKeyOf(p), p);
+  // The actual CSG work (buildConnectorPair, checkConnectorFit,
+  // csgSubtractTriangles and everything under it) now runs in a Worker —
+  // see getCsgWorker/runJoinComputation above and the #csgWorkerSrc script
+  // tag containing that exact same engine's source. Only plain, structured-
+  // cloneable data crosses the boundary: manualJoints as-is (ids/keys/
+  // numbers/plain arrays only) and lastSplitResult's base pieces. What
+  // comes back is applied onto the real objects here, on the main thread,
+  // same as the old synchronous version did in place.
+  let response;
+  try {
+    response = await runJoinComputation(manualJoints, lastSplitResult.pieces, lastSplitResult.tol);
+  } catch (err){
+    console.error("recomputeJoinedPieces (worker) failed:", err);
+    reportClientError("recomputeJoinedPieces worker failed: " + err.message, { stack: err.stack });
+    for (const j of manualJoints){ j.valid = false; j.reason = 'verify-failed'; }
+    computedPieces = null;
+    return;
+  }
 
-  const byFemaleKey = new Map();
+  const byId = new Map(response.jointResults.map(r => [r.id, r]));
   for (const j of manualJoints){
-    if (!byFemaleKey.has(j.femaleKey)) byFemaleKey.set(j.femaleKey, []);
-    byFemaleKey.get(j.femaleKey).push(j);
-  }
-
-  const invTol = 1/lastSplitResult.tol;
-  const triKey = t => t.map(v => Math.round(v[0]*invTol)+","+Math.round(v[1]*invTol)+","+Math.round(v[2]*invTol)).join("|");
-
-  const femaleResultByKey = new Map();
-  for (const [femaleKey, joints] of byFemaleKey){
-    const basePiece = baseByKey.get(femaleKey);
-    if (!basePiece){ for (const j of joints){ j.valid=false; j.reason='piece-missing'; } continue; }
-
-    // Every connector on this piece is subtracted in sequence, each against
-    // whatever the piece looks like after the ones before it — a real
-    // boolean, unlike the old box-carve, doesn't corrupt or need isolating
-    // from earlier cuts.
-    let femaleTriangles = basePiece.triangles;
-    for (const j of joints){
-      // The BSP boolean engine (csgSubtractTriangles) is real solid
-      // geometry, not an approximation, but that means it's also doing real
-      // work — degenerate/near-coplanar triangles in a particular model's
-      // actual seam can throw partway through instead of just producing a
-      // slightly-off result. Before this try/catch existed, that exception
-      // propagated all the way up through tryAddJoint and out of the click
-      // handler uncaught: the joint stayed in manualJoints (pushed before
-      // recompute ever ran), nothing rendered, no message showed, and the
-      // "Add" button was left silently unable to place anything else — the
-      // exact symptom reported ("only lets me place one connector, no error
-      // at all"). One connector's geometry failing on a specific model must
-      // never take down every connector after it; mark just this one
-      // invalid and keep going.
-      try {
-        const maleBase = baseByKey.get(j.maleKey);
-        if (!maleBase){ j.valid=false; j.reason='piece-missing'; continue; }
-
-        const geo = buildConnectorPair({ axis:j.axis, planeValue:j.planeValue, dir:j.dir, p1:j.p1, p2:j.p2, sz:j.sz, width:j.width, height:j.height, depth:j.depth, tol:lastSplitResult.tol, type:j.type, clearance:j.clearance, femaleGap:j.femaleGap });
-        j._lastGeo = geo.ok ? geo : null;
-        if (!geo.ok){ j.valid=false; j.reason=geo.reason; continue; }
-
-        // reject up front, before ever running the (comparatively expensive)
-        // boolean, if the connector is clearly too big for the parts it's on
-        // or long enough to punch straight through the other side.
-        const fit = checkConnectorFit(j, geo, maleBase, basePiece);
-        if (!fit.ok){ j.valid=false; j.reason=fit.reason; j._lastGeo=null; continue; }
-
-        const cutterWorld = j.basis
-          ? geo.cutterTriangles.map(t => t.map(v => localToWorld(v, j.basis, j.origin)))
-          : geo.cutterTriangles;
-        const afterCut = csgSubtractTriangles(femaleTriangles, cutterWorld);
-
-        // A real boolean that left the mesh unchanged means the cutter solid
-        // never actually intersected it — e.g. a gap estimate that placed it
-        // just past the true surface. That's still "no visible cavity," same
-        // as it would have been under the old box-carve, so it's rejected
-        // the same way rather than shipped as a silently broken female end.
-        const beforeKeys = new Set(femaleTriangles.map(triKey));
-        const genuinelyChanged = afterCut.length !== femaleTriangles.length || afterCut.some(t => !beforeKeys.has(triKey(t)));
-        if (!genuinelyChanged){ j.valid=false; j.reason='no-cavity'; j._lastGeo=null; continue; }
-
-        j.valid = true; j.reason = null;
-        // an oriented joint's tab comes out of buildConnectorPair in its own
-        // local frame (same as the cutter solid) and must be rotated into
-        // world coordinates before it can be welded onto the male piece,
-        // which is otherwise entirely in world space.
-        j._maleTabTriangles = j.basis
-          ? geo.tabTriangles.map(t => t.map(v => localToWorld(v, j.basis, j.origin)))
-          : geo.tabTriangles;
-        femaleTriangles = afterCut;
-      } catch (err){
-        console.error("Joint " + j.id + " failed to build:", err);
-        reportClientError("Joint failed to build: " + err.message, {
-          stack: err.stack,
-          data: { type: j.type, sz: j.sz, depth: j.depth, clearance: j.clearance, femaleTriCount: femaleTriangles.length }
-        });
-        j.valid = false; j.reason = 'verify-failed'; j._lastGeo = null;
-      }
+    const r = byId.get(j.id);
+    if (!r) continue;
+    j.valid = r.valid;
+    j.reason = r.reason;
+    j._maleTabTrianglesExported = r.maleTabTrianglesExported;
+    if (r.error){
+      console.error("Joint " + j.id + " failed to build:", r.error);
+      reportClientError("Joint failed to build: " + r.error.message, {
+        stack: r.error.stack,
+        data: { type: j.type, sz: j.sz, depth: j.depth, clearance: j.clearance, femaleTriCount: r.femaleTriCountAtFailure }
+      });
     }
-    femaleResultByKey.set(femaleKey, femaleTriangles);
   }
-
-  const working = new Map();
-  for (const [key, basePiece] of baseByKey){
-    const triangles = femaleResultByKey.has(key) ? femaleResultByKey.get(key) : basePiece.triangles;
-    working.set(key, { col:basePiece.col, row:basePiece.row, layer:basePiece.layer, triangles });
-  }
-  for (const j of manualJoints){
-    if (j.valid && j._maleTabTriangles){
-      const male = working.get(j.maleKey);
-      if (male) male.triangles = male.triangles.concat(j._maleTabTriangles);
-      // survives past this function (unlike _maleTabTriangles, which is
-      // scratch state re-derived every recompute) so pre-export validation
-      // can confirm the male half is actually present in the final mesh.
-      j._maleTabTrianglesExported = j._maleTabTriangles;
-    } else if (!j.valid){
-      j._maleTabTrianglesExported = null;
-    }
-    delete j._maleTabTriangles;
-  }
-
-  computedPieces = [...working.values()];
+  computedPieces = response.computedPieces;
 }
 
 function describeJointReason(reason){
@@ -3375,11 +4913,11 @@ addJointBtn.addEventListener("click", ()=> setAddJointMode(!addJointMode));
 // modal's own Move/Delete buttons, so both stay in sync with each other and
 // with the exported geometry — deleting is just "drop it from the list and
 // recompute everyone else from the untouched base" (see recomputeJoinedPieces).
-function deleteJointById(id){
+async function deleteJointById(id){
   if (!id) return;
   manualJoints = manualJoints.filter(j => j.id !== id);
   if (selectedJointId === id) selectedJointId = null;
-  recomputeJoinedPieces();
+  await recomputeJoinedPieces();
   renderPieces(lastSplitResult, parseFloat(bedXInput.value)||220, parseFloat(bedYInput.value)||220, parseFloat(bedZInput.value)||250);
   renderJointsList();
   refreshPartPreview();
@@ -3423,12 +4961,12 @@ function wireDeleteConfirm(btn, onConfirmed){
 // opens the male piece's own preview (arming "+ Add Joining Point" there)
 // and frames the camera on the connector's old location, rather than
 // leaving the user to hunt for the right part and spot themselves.
-function moveJoint(id){
+async function moveJoint(id){
   const j = manualJoints.find(x => x.id === id);
   if (!j) return;
   const maleIdx = computedPieces ? computedPieces.findIndex(p => pieceKeyOf(p) === j.maleKey) : -1;
   const pt = jointWorldPoint(j);
-  deleteJointById(id);
+  await deleteJointById(id);
   if (maleIdx >= 0 && computedPieces[maleIdx]){
     openPartPreview(maleIdx);
     setPreviewAddMode(true);
@@ -3503,12 +5041,12 @@ function selectJoint(id){
 // or female side separately — so both halves are always regenerated from
 // the same edited definition on the very next recompute. There is no code
 // path that edits just one side: editing IS editing the shared definition.
-function updateJointField(id, field, value){
+async function updateJointField(id, field, value){
   const j = manualJoints.find(x => x.id === id);
   if (!j) return;
   j[field] = value;
   if (field === 'sz'){ j.width = value; j.height = value; }
-  recomputeJoinedPieces();
+  await recomputeJoinedPieces();
   renderPieces(lastSplitResult, parseFloat(bedXInput.value)||220, parseFloat(bedYInput.value)||220, parseFloat(bedZInput.value)||250);
   renderJointsList();
   refreshPartPreview();
@@ -3612,7 +5150,7 @@ function renderJointsList(){
 // not to guarantee perfect watertightness of the surrounding shell), so the
 // only way this can still fail is 'piece-missing' — the male or female key
 // no longer existing (e.g. the model was reloaded/resplit mid-click).
-function tryAddJoint(axis, planeValue, dir, maleKey, femaleKey, p1, p2, orientedFrame, femaleGap){
+async function tryAddJoint(axis, planeValue, dir, maleKey, femaleKey, p1, p2, orientedFrame, femaleGap){
   // A face here means "this specific pair of pieces" — one connector
   // between any given pair is plenty to hold them together, and each
   // additional one placed on the same pair chains another CSG boolean onto
@@ -3627,7 +5165,7 @@ function tryAddJoint(axis, planeValue, dir, maleKey, femaleKey, p1, p2, oriented
     ((j.maleKey === maleKey && j.femaleKey === femaleKey) || (j.maleKey === femaleKey && j.femaleKey === maleKey)));
   if (alreadyJoined){
     showJointMsg("This face already has a connector — one per face is enough to hold the pieces together. Add the next one on a different face.", true);
-    return;
+    return false;
   }
 
   const sz = Math.max(2, parseFloat(tabSizeInput.value)||8);
@@ -3648,19 +5186,20 @@ function tryAddJoint(axis, planeValue, dir, maleKey, femaleKey, p1, p2, oriented
   const joint = { id, axis, planeValue, dir, maleKey, femaleKey, p1, p2, sz, width:sz, height:sz, depth, clearance, type, femaleGap: femaleGap||0, valid:true, reason:null };
   if (orientedFrame){ joint.basis = orientedFrame.basis; joint.origin = orientedFrame.origin; }
   manualJoints.push(joint);
-  recomputeJoinedPieces();
+  await recomputeJoinedPieces();
 
   if (!joint.valid){
     manualJoints.pop();
-    recomputeJoinedPieces();
+    await recomputeJoinedPieces();
     showJointMsg(describeJointReason(joint.reason), true);
-    return;
+    return false;
   }
 
   nextJointNum++;
   renderPieces(lastSplitResult, parseFloat(bedXInput.value)||220, parseFloat(bedYInput.value)||220, parseFloat(bedZInput.value)||250);
   renderJointsList();
   showJointMsg(joint.id + " added — male on piece " + maleKey + ", female on piece " + femaleKey + ".", false);
+  return true;
 }
 
 function handleViewerClick(event){
