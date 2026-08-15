@@ -371,6 +371,22 @@
       </div>
       <input id="fileInput" type="file" accept=".stl" style="display:none">
       <div id="modelInfo" style="margin-top:10px;">No file loaded.</div>
+      <div id="simplifyBox" style="margin-top:10px; display:none; border:1px solid var(--line); border-radius:10px; padding:12px;">
+        <div id="simplifyOffer">
+          <div class="hint" id="simplifyOfferText"></div>
+          <div class="row" style="margin-top:8px; align-items:flex-end;">
+            <div><label>Target triangles</label><input id="simplifyTarget" type="number" min="500" step="500"></div>
+            <button id="simplifyPreviewBtn" class="btn-secondary">Preview simplified</button>
+          </div>
+        </div>
+        <div id="simplifyResult" style="display:none;">
+          <div class="hint" id="simplifyResultText"></div>
+          <div class="row" style="margin-top:8px;">
+            <button id="simplifyUseBtn" class="btn-primary">Use this simplified version</button>
+            <button id="simplifyKeepBtn" class="btn-secondary">Keep original</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section>
@@ -4616,6 +4632,72 @@ function trianglesToGeometry(triangles){
   return geom;
 }
 
+// A very dense model (hundreds of thousands of triangles) is genuinely
+// too much for the connector-placement geometry code to process quickly
+// almost anywhere on it — confirmed by direct user testing — even after
+// today's speedups, since the boolean cut and watertightness checks still
+// scale with triangle count. Rather than making the user run an external
+// tool first, offer to do the same kind of reduction here. This is opt-in
+// and previewable, never silent — see
+// showSimplifySuggest/previewSimplify/commitSimplifyPreview below — since
+// simplification is inherently lossy and the user should see the result
+// before it replaces their loaded model.
+//
+// THREE's own SimplifyModifier (proper quadric-error edge collapse, the
+// same family of algorithm as Blender's Decimate) was tried first here and
+// abandoned — confirmed by direct testing, it took 5.7 SECONDS to remove
+// just 100 of ~90,000 vertices on a real dense mesh, which extrapolates to
+// over an hour for the kind of reduction this feature actually needs to
+// be useful for. Vertex clustering is a much cruder technique (snap every
+// vertex to the center of whichever cell of a 3D grid it falls in, so
+// nearby vertices collapse onto each other) — it doesn't preserve sharp
+// features as intelligently as true edge-collapse, but it's a single
+// O(triangles) pass with no iteration, so it stays fast at exactly the
+// scale (hundreds of thousands of triangles) where edge-collapse falls
+// over. The result doesn't need to be pristine — it just needs to be
+// enough for the user's own before/after preview to judge, and it still
+// goes through this app's own split + watertight-repair pipeline
+// afterward like any other loaded model.
+function simplifyTriangles(triangles, targetTriCount){
+  if (triangles.length <= targetTriCount) return triangles;
+
+  const bbox = computeBBox(triangles);
+  const size = sub3(bbox.max, bbox.min);
+  const volume = Math.max(size[0]*size[1]*size[2], 1e-9);
+  // A closed mesh has roughly twice as many triangles as vertices, so aim
+  // for about half the target triangle count as the target vertex (i.e.
+  // grid cell) count, then size cubic cells to partition the model's
+  // actual bounding volume into that many cells.
+  const targetCellCount = Math.max(4, Math.round(targetTriCount/2));
+  const cellSize = Math.max(Math.cbrt(volume/targetCellCount), 1e-6);
+  const invCell = 1/cellSize;
+  const cellKeyOf = v => Math.floor(v[0]*invCell)+","+Math.floor(v[1]*invCell)+","+Math.floor(v[2]*invCell);
+
+  // First pass: average every vertex that falls in a cell into that
+  // cell's own centroid, so the snapped point represents the local
+  // surface rather than an arbitrary corner.
+  const sums = new Map();
+  for (const t of triangles) for (const v of t){
+    const k = cellKeyOf(v);
+    let s = sums.get(k);
+    if (!s){ s = [0,0,0,0]; sums.set(k, s); }
+    s[0]+=v[0]; s[1]+=v[1]; s[2]+=v[2]; s[3]++;
+  }
+  const centroids = new Map();
+  for (const [k, s] of sums) centroids.set(k, [s[0]/s[3], s[1]/s[3], s[2]/s[3]]);
+
+  // Second pass: rebuild every triangle from its vertices' cell centroids.
+  // Triangles whose 3 vertices all landed in the same (or too-similar)
+  // cell collapse to nothing and are dropped, same as any other
+  // degenerate-triangle guard elsewhere in this app.
+  const outTriangles = [];
+  for (const t of triangles){
+    const tri = [centroids.get(cellKeyOf(t[0])), centroids.get(cellKeyOf(t[1])), centroids.get(cellKeyOf(t[2]))];
+    if (!isDegenerateTriangle(tri, 1e-9)) outTriangles.push(tri);
+  }
+  return outTriangles;
+}
+
 function fitCameraToBBoxFor(cam, ctrl, bbox){
   const center = [ (bbox.min[0]+bbox.max[0])/2, (bbox.min[1]+bbox.max[1])/2, (bbox.min[2]+bbox.max[2])/2 ];
   const size = length3(sub3(bbox.max, bbox.min)) || 100;
@@ -4656,10 +4738,20 @@ let computedPieces = null;  // base pieces with every current joint's geometry a
 let selectedJointId = null;
 let addJointMode = false;
 let nextJointNum = 1;
+let pendingSimplifiedTriangles = null; // set while a simplify preview is showing, cleared once accepted/discarded
 
 const fileInput = document.getElementById("fileInput");
 const dropzone = document.getElementById("dropzone");
 const modelInfo = document.getElementById("modelInfo");
+const simplifyBox = document.getElementById("simplifyBox");
+const simplifyOffer = document.getElementById("simplifyOffer");
+const simplifyOfferText = document.getElementById("simplifyOfferText");
+const simplifyTargetInput = document.getElementById("simplifyTarget");
+const simplifyPreviewBtn = document.getElementById("simplifyPreviewBtn");
+const simplifyResult = document.getElementById("simplifyResult");
+const simplifyResultText = document.getElementById("simplifyResultText");
+const simplifyUseBtn = document.getElementById("simplifyUseBtn");
+const simplifyKeepBtn = document.getElementById("simplifyKeepBtn");
 const bedXInput = document.getElementById("bedX");
 const bedYInput = document.getElementById("bedY");
 const bedZInput = document.getElementById("bedZ");
@@ -4747,7 +4839,95 @@ function loadMesh(triangles){
 
   statusEl.textContent = (fitsXY && fitsZ) ? "This model already fits the bed. You can still press Split (it will produce a single piece)." : "Press \"Split into bed-sized pieces\" to generate a grid of pieces that fit your bed.";
   splitBtn.disabled = false;
+
+  updateSimplifyOffer(triangles.length);
 }
+
+// Above this many triangles, connector placement can be slow almost
+// anywhere on the model — confirmed by direct user testing on a
+// ~400,000-triangle file — since the boolean cut and watertightness
+// checks both scale with triangle count, not just the weld step this
+// session's speedup targeted.
+const SIMPLIFY_SUGGEST_THRESHOLD = 50000;
+const SIMPLIFY_DEFAULT_TARGET = 20000;
+
+function updateSimplifyOffer(triCount){
+  cancelSimplifyPreview();
+  if (triCount <= SIMPLIFY_SUGGEST_THRESHOLD){
+    simplifyBox.style.display = "none";
+    return;
+  }
+  simplifyBox.style.display = "block";
+  simplifyOfferText.innerHTML =
+    "<b style='color:var(--ink)'>" + triCount.toLocaleString() + " triangles</b> — dense enough to slow down connector placement almost everywhere on this model. " +
+    "You can preview a simplified version below before deciding whether to use it (this doesn't change the file on disk, only what's loaded here).";
+  simplifyTargetInput.value = Math.min(SIMPLIFY_DEFAULT_TARGET, Math.max(500, Math.round(triCount/2)));
+}
+
+// Runs THREE's SimplifyModifier (see simplifyTriangles) and shows the
+// result for the user to accept or discard — never replaces the loaded
+// model on its own. Simplification itself still runs synchronously on the
+// main thread (SimplifyModifier is built on live THREE.js geometry
+// objects, which can't cross into a Web Worker the way the connector
+// engine's plain-array geometry can), so this can briefly freeze the page
+// for a very large model — but it only ever happens once per model load,
+// not on every connector placement the way the un-optimized CSG engine
+// used to, so a bounded one-time wait here is a reasonable trade.
+async function previewSimplify(){
+  if (!currentTriangles) return;
+  const target = Math.max(100, Math.round(parseFloat(simplifyTargetInput.value)) || SIMPLIFY_DEFAULT_TARGET);
+  simplifyPreviewBtn.disabled = true;
+  simplifyPreviewBtn.textContent = "Simplifying… this can take a moment";
+  await new Promise(r => setTimeout(r, 10)); // let the button's own text repaint before the blocking work starts
+  try {
+    const simplified = simplifyTriangles(currentTriangles, target);
+    pendingSimplifiedTriangles = simplified;
+    originalGroup.clear();
+    const geom = trianglesToGeometry(simplified);
+    const mat = new THREE.MeshStandardMaterial({ color:0x94a3b8, flatShading:true, side:THREE.DoubleSide, metalness:0.05, roughness:0.8 });
+    originalGroup.add(new THREE.Mesh(geom, mat));
+    simplifyOffer.style.display = "none";
+    simplifyResult.style.display = "block";
+    simplifyResultText.innerHTML =
+      "Preview: <b style='color:var(--ink)'>" + simplified.length.toLocaleString() + " triangles</b> (was " + currentTriangles.length.toLocaleString() + "). " +
+      "Rotate/zoom the model on the right to check it still looks right before deciding.";
+  } catch (err){
+    console.error("simplifyTriangles failed:", err);
+    reportClientError("simplifyTriangles failed: " + err.message, { stack: err.stack, data: { triCount: currentTriangles.length, target } });
+    simplifyOfferText.innerHTML += "<br><span class='bad'>Simplification failed — you can still use the original model as-is, or try Blender's Decimate modifier instead.</span>";
+  } finally {
+    simplifyPreviewBtn.disabled = false;
+    simplifyPreviewBtn.textContent = "Preview simplified";
+  }
+}
+
+function commitSimplifyPreview(){
+  if (!pendingSimplifiedTriangles) return;
+  const simplified = pendingSimplifiedTriangles;
+  pendingSimplifiedTriangles = null;
+  loadMesh(simplified); // re-runs the full load flow (bbox, bed-fit check, etc.) on the simplified triangles
+}
+
+function cancelSimplifyPreview(){
+  if (!pendingSimplifiedTriangles){
+    simplifyResult.style.display = "none";
+    simplifyOffer.style.display = "block";
+    return;
+  }
+  pendingSimplifiedTriangles = null;
+  simplifyResult.style.display = "none";
+  simplifyOffer.style.display = "block";
+  if (currentTriangles){
+    originalGroup.clear();
+    const geom = trianglesToGeometry(currentTriangles);
+    const mat = new THREE.MeshStandardMaterial({ color:0x94a3b8, flatShading:true, side:THREE.DoubleSide, metalness:0.05, roughness:0.8 });
+    originalGroup.add(new THREE.Mesh(geom, mat));
+  }
+}
+
+simplifyPreviewBtn.addEventListener("click", previewSimplify);
+simplifyUseBtn.addEventListener("click", commitSimplifyPreview);
+simplifyKeepBtn.addEventListener("click", cancelSimplifyPreview);
 
 splitBtn.addEventListener("click", ()=>{
   if (!currentTriangles) return;
