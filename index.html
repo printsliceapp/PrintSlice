@@ -436,6 +436,7 @@
         <div id="partPreviewSeamKey" class="ppm-seam-key"></div>
         <button id="partPreviewAddBtn" class="btn-primary" style="margin-top:10px;">+ Add Joining Point</button>
         <div class="hint" style="margin-top:4px;">One connector per face — place a second one on a different face for a stronger join.</div>
+        <div class="hint" style="margin-top:4px;">While placing, the green shape on the model shows the connector's actual size — move the cursor to check it'll fit before clicking.</div>
         <div id="ppmSettings" class="ppm-settings" hidden>
           <div class="row">
             <div><label>Connector type</label>
@@ -3930,6 +3931,7 @@ const raycaster = new THREE.Raycaster();
    selected piece's geometry is ever built for it) ---------- */
 let previewScene, previewCamera, previewRenderer, previewControls;
 let previewMesh, previewMarkersGroup, previewHighlightMesh, previewSeamHighlightGroup;
+let previewHoverShapeParams = null; // {sz, depth, type, embed, protrude} — see showPreviewHoverMarker
 let previewPieceIndex = null;
 let previewOpen = false;
 let previewAddMode = false;
@@ -4210,19 +4212,61 @@ function clearPreviewHighlight(){
   if (previewRenderer) previewRenderer.domElement.style.cursor = "default";
 }
 
-// small sphere at the exact point under the cursor — there's no longer a
-// "face" to highlight since clicks aren't restricted to seams, just the one
-// point that would be used if clicked, reused across moves (only its
-// position changes) so this never allocates per mousemove.
-function showPreviewHoverMarker(point){
-  if (!previewHighlightMesh){
-    const geom = new THREE.SphereGeometry(1.1, 16, 16);
-    const mat = new THREE.MeshBasicMaterial({ color:0x3ecf8e, transparent:true, opacity:0.85, depthTest:false });
+// A shape at the exact size/position/orientation the actual connector
+// would be built at if clicked right now — not just a generic dot — so a
+// user can see at a glance whether it'll actually fit before spending the
+// (now much faster, but still real) time waiting for the genuine CSG cut.
+// Dimensions mirror buildConnectorPair's own math for embed/protrude/bump
+// closely enough to be a trustworthy size preview without needing the
+// real geometry engine just to draw a box. Geometry is only rebuilt when
+// the size/depth/type settings actually change (tracked in
+// previewHoverShapeParams) — mousemove can fire many times a second, and
+// a full THREE.js geometry rebuild on every single one would be wasteful
+// churn for something that's visually identical between moves.
+function showPreviewHoverMarker(hitInfo){
+  const sz = Math.max(2, parseFloat(tabSizeInput.value)||8);
+  const depth = Math.max(1, parseFloat(tabDepthInput.value)||3.2);
+  const type = jointStyleInput.value;
+
+  const changed = !previewHoverShapeParams || previewHoverShapeParams.sz!==sz || previewHoverShapeParams.depth!==depth || previewHoverShapeParams.type!==type;
+  if (changed || !previewHighlightMesh){
+    if (previewHighlightMesh){
+      previewScene.remove(previewHighlightMesh);
+      previewHighlightMesh.geometry.dispose();
+      previewHighlightMesh.material.dispose();
+    }
+    const embed = Math.max(0.5, sz*0.2);
+    const protrude = Math.max(1.0, depth);
+    const bump = Math.max(0.6, sz*0.25);
+    const outerHalf = type === 'dovetail' ? sz/2 + bump : sz/2;
+    const totalThickness = protrude + embed;
+    let geom;
+    if (type === 'pins'){
+      geom = new THREE.CylinderGeometry(outerHalf, outerHalf, totalThickness, 24);
+      geom.rotateX(Math.PI/2); // cylinder's default axis is Y; the rest of this shape's math treats Z as "along the surface normal"
+    } else {
+      geom = new THREE.BoxGeometry(outerHalf*2, outerHalf*2, totalThickness);
+    }
+    const mat = new THREE.MeshBasicMaterial({ color:0x3ecf8e, transparent:true, opacity:0.4, depthTest:false });
     previewHighlightMesh = new THREE.Mesh(geom, mat);
     previewHighlightMesh.renderOrder = 999;
     previewScene.add(previewHighlightMesh);
+    previewHoverShapeParams = { sz, depth, type, embed, protrude };
   }
-  previewHighlightMesh.position.set(point.x, point.y, point.z);
+
+  const { embed, protrude } = previewHoverShapeParams;
+  const n = new THREE.Vector3(hitInfo.basis[2][0], hitInfo.basis[2][1], hitInfo.basis[2][2]);
+  previewHighlightMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), n);
+  // centered between how far the connector embeds INTO the surface and how
+  // far it protrudes OUT of it, not just sitting at the clicked point —
+  // otherwise a deep connector would visually stick out from the surface
+  // far more than it actually would once carved.
+  const offset = (protrude-embed)/2;
+  previewHighlightMesh.position.set(
+    hitInfo.point[0] + n.x*offset,
+    hitInfo.point[1] + n.y*offset,
+    hitInfo.point[2] + n.z*offset
+  );
   previewRenderer.domElement.style.cursor = "crosshair";
 }
 
@@ -4265,7 +4309,7 @@ function previewHandleMouseMove(event){
   previewRaycaster.setFromCamera(mouse, previewCamera);
   const hits = previewRaycaster.intersectObject(previewMesh, false);
   if (hits.length === 0){ clearPreviewHighlight(); return; }
-  showPreviewHoverMarker(hits[0].point);
+  showPreviewHoverMarker(classifyPreviewHit(hits[0]));
 }
 
 // click-to-place inside the per-part preview: any point on the previewed
