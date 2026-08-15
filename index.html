@@ -1717,13 +1717,69 @@ function csgTrianglesFromPolygons(polygons){
 function csgWeldTJunctions(triangles, tol, candidates){
   if (candidates.length === 0) return triangles;
 
+  // Checking every candidate against every triangle edge (the original
+  // approach) is O(candidates x triangles) — fine when either side is
+  // small, but confirmed by direct profiling to dominate a cut's total
+  // time on a dense organic piece, where triangles can number in the
+  // thousands. A spatial grid over the candidates turns "which of these
+  // could be near this edge" into a handful of bucket lookups instead of
+  // a full scan, while finding the EXACT same matches — this only changes
+  // how efficiently a match is located, never what counts as one.
+  //
+  // Cell size is derived from the candidates' own spread (not from `tol`,
+  // which is far too small to be a sane cell size — a grid that fine
+  // would need millions of cells to cover a piece that's tens of mm
+  // across). Sized this way, a query for one edge only ever has to walk
+  // roughly as many cells as its own length actually spans, regardless of
+  // how large the whole piece is.
+  let cbMin=[Infinity,Infinity,Infinity], cbMax=[-Infinity,-Infinity,-Infinity];
+  for (const v of candidates) for (let k=0;k<3;k++){ if (v[k]<cbMin[k]) cbMin[k]=v[k]; if (v[k]>cbMax[k]) cbMax[k]=v[k]; }
+  const span = Math.max(cbMax[0]-cbMin[0], cbMax[1]-cbMin[1], cbMax[2]-cbMin[2], 1e-6);
+  const cellSize = Math.max(span / Math.cbrt(candidates.length + 1), tol*4);
+  const invCell = 1/cellSize;
+  const grid = new Map();
+  for (let idx=0; idx<candidates.length; idx++){
+    const v = candidates[idx];
+    const key = Math.floor(v[0]*invCell)+","+Math.floor(v[1]*invCell)+","+Math.floor(v[2]*invCell);
+    let bucket = grid.get(key);
+    if (!bucket){ bucket = []; grid.set(key, bucket); }
+    bucket.push(idx);
+  }
+  // Reused across every call to avoid a fresh array allocation per edge —
+  // splitOnce is only ever called one edge at a time, never re-entrantly,
+  // so a single shared scratch array is safe here.
+  const nearbyIdx = [];
+  function candidateIndicesNear(p0, p1){
+    nearbyIdx.length = 0;
+    const minX = Math.max(Math.min(p0[0],p1[0])-tol, cbMin[0]-tol), maxX = Math.min(Math.max(p0[0],p1[0])+tol, cbMax[0]+tol);
+    const minY = Math.max(Math.min(p0[1],p1[1])-tol, cbMin[1]-tol), maxY = Math.min(Math.max(p0[1],p1[1])+tol, cbMax[1]+tol);
+    const minZ = Math.max(Math.min(p0[2],p1[2])-tol, cbMin[2]-tol), maxZ = Math.min(Math.max(p0[2],p1[2])+tol, cbMax[2]+tol);
+    if (minX>maxX || minY>maxY || minZ>maxZ) return nearbyIdx;
+    const cx0=Math.floor(minX*invCell), cx1=Math.floor(maxX*invCell);
+    const cy0=Math.floor(minY*invCell), cy1=Math.floor(maxY*invCell);
+    const cz0=Math.floor(minZ*invCell), cz1=Math.floor(maxZ*invCell);
+    for (let cx=cx0; cx<=cx1; cx++) for (let cy=cy0; cy<=cy1; cy++) for (let cz=cz0; cz<=cz1; cz++){
+      const bucket = grid.get(cx+","+cy+","+cz);
+      if (bucket) for (const idx of bucket) nearbyIdx.push(idx);
+    }
+    // The original scan always tried candidates in their given array
+    // order and returned on the first real match — restoring that same
+    // order here (bucket-gathering order isn't it) means this produces
+    // bit-for-bit the same result as the full scan whenever more than one
+    // candidate would otherwise match the same edge.
+    nearbyIdx.sort((a,b)=>a-b);
+    return nearbyIdx;
+  }
+
   function splitOnce(t){
     for (let i=0;i<3;i++){
       const p0=t[i], p1=t[(i+1)%3], p2=t[(i+2)%3];
       const edgeVec = sub3(p1,p0);
       const edgeLen2 = dot3(edgeVec,edgeVec);
       if (edgeLen2 < tol*tol) continue;
-      for (const v of candidates){
+      const nearby = candidateIndicesNear(p0, p1);
+      for (const idx of nearby){
+        const v = candidates[idx];
         if (length3(sub3(v,p0))<tol || length3(sub3(v,p1))<tol) continue;
         const t0 = dot3(sub3(v,p0), edgeVec)/edgeLen2;
         if (t0<=1e-4 || t0>=1-1e-4) continue;
@@ -2289,7 +2345,7 @@ function runJoinComputation(manualJointsPlain, basePieces, tol){
       if (csgWorker){ csgWorker.terminate(); csgWorker = null; }
       for (const { reject: rejectOther } of csgWorkerPending.values()) rejectOther(new Error('Worker timed out'));
       csgWorkerPending.clear();
-      reject(new Error('This spot is taking too long to compute — try a different location, a smaller connector, or spacing connectors further apart.'));
+      reject(new Error('This spot is taking too long to compute — try a different location, a smaller connector, spacing connectors further apart, or reducing your model\'s triangle count first (e.g. Blender\'s Decimate modifier).'));
     }, CSG_WORKER_TIMEOUT_MS);
     csgWorkerPending.set(reqId, {
       resolve: (v) => { clearTimeout(timer); resolve(v); },
@@ -3345,13 +3401,69 @@ function csgTrianglesFromPolygons(polygons){
 function csgWeldTJunctions(triangles, tol, candidates){
   if (candidates.length === 0) return triangles;
 
+  // Checking every candidate against every triangle edge (the original
+  // approach) is O(candidates x triangles) — fine when either side is
+  // small, but confirmed by direct profiling to dominate a cut's total
+  // time on a dense organic piece, where triangles can number in the
+  // thousands. A spatial grid over the candidates turns "which of these
+  // could be near this edge" into a handful of bucket lookups instead of
+  // a full scan, while finding the EXACT same matches — this only changes
+  // how efficiently a match is located, never what counts as one.
+  //
+  // Cell size is derived from the candidates' own spread (not from `tol`,
+  // which is far too small to be a sane cell size — a grid that fine
+  // would need millions of cells to cover a piece that's tens of mm
+  // across). Sized this way, a query for one edge only ever has to walk
+  // roughly as many cells as its own length actually spans, regardless of
+  // how large the whole piece is.
+  let cbMin=[Infinity,Infinity,Infinity], cbMax=[-Infinity,-Infinity,-Infinity];
+  for (const v of candidates) for (let k=0;k<3;k++){ if (v[k]<cbMin[k]) cbMin[k]=v[k]; if (v[k]>cbMax[k]) cbMax[k]=v[k]; }
+  const span = Math.max(cbMax[0]-cbMin[0], cbMax[1]-cbMin[1], cbMax[2]-cbMin[2], 1e-6);
+  const cellSize = Math.max(span / Math.cbrt(candidates.length + 1), tol*4);
+  const invCell = 1/cellSize;
+  const grid = new Map();
+  for (let idx=0; idx<candidates.length; idx++){
+    const v = candidates[idx];
+    const key = Math.floor(v[0]*invCell)+","+Math.floor(v[1]*invCell)+","+Math.floor(v[2]*invCell);
+    let bucket = grid.get(key);
+    if (!bucket){ bucket = []; grid.set(key, bucket); }
+    bucket.push(idx);
+  }
+  // Reused across every call to avoid a fresh array allocation per edge —
+  // splitOnce is only ever called one edge at a time, never re-entrantly,
+  // so a single shared scratch array is safe here.
+  const nearbyIdx = [];
+  function candidateIndicesNear(p0, p1){
+    nearbyIdx.length = 0;
+    const minX = Math.max(Math.min(p0[0],p1[0])-tol, cbMin[0]-tol), maxX = Math.min(Math.max(p0[0],p1[0])+tol, cbMax[0]+tol);
+    const minY = Math.max(Math.min(p0[1],p1[1])-tol, cbMin[1]-tol), maxY = Math.min(Math.max(p0[1],p1[1])+tol, cbMax[1]+tol);
+    const minZ = Math.max(Math.min(p0[2],p1[2])-tol, cbMin[2]-tol), maxZ = Math.min(Math.max(p0[2],p1[2])+tol, cbMax[2]+tol);
+    if (minX>maxX || minY>maxY || minZ>maxZ) return nearbyIdx;
+    const cx0=Math.floor(minX*invCell), cx1=Math.floor(maxX*invCell);
+    const cy0=Math.floor(minY*invCell), cy1=Math.floor(maxY*invCell);
+    const cz0=Math.floor(minZ*invCell), cz1=Math.floor(maxZ*invCell);
+    for (let cx=cx0; cx<=cx1; cx++) for (let cy=cy0; cy<=cy1; cy++) for (let cz=cz0; cz<=cz1; cz++){
+      const bucket = grid.get(cx+","+cy+","+cz);
+      if (bucket) for (const idx of bucket) nearbyIdx.push(idx);
+    }
+    // The original scan always tried candidates in their given array
+    // order and returned on the first real match — restoring that same
+    // order here (bucket-gathering order isn't it) means this produces
+    // bit-for-bit the same result as the full scan whenever more than one
+    // candidate would otherwise match the same edge.
+    nearbyIdx.sort((a,b)=>a-b);
+    return nearbyIdx;
+  }
+
   function splitOnce(t){
     for (let i=0;i<3;i++){
       const p0=t[i], p1=t[(i+1)%3], p2=t[(i+2)%3];
       const edgeVec = sub3(p1,p0);
       const edgeLen2 = dot3(edgeVec,edgeVec);
       if (edgeLen2 < tol*tol) continue;
-      for (const v of candidates){
+      const nearby = candidateIndicesNear(p0, p1);
+      for (const idx of nearby){
+        const v = candidates[idx];
         if (length3(sub3(v,p0))<tol || length3(sub3(v,p1))<tol) continue;
         const t0 = dot3(sub3(v,p0), edgeVec)/edgeLen2;
         if (t0<=1e-4 || t0>=1-1e-4) continue;
@@ -4956,7 +5068,7 @@ function describeJointReason(reason){
   if (reason === 'too-small') return "Connector cannot be placed here — insufficient material for this size at this spot.";
   if (reason === 'off-shape') return "Connector cannot be placed here — too close to the edge of the surface.";
   if (reason === 'no-cap') return "Couldn't find a flat seam there — click closer to the middle of the cut face.";
-  if (reason === 'verify-failed') return "Connector cannot be placed here — the geometry couldn't be generated cleanly at this spot.";
+  if (reason === 'verify-failed') return "Connector cannot be placed here — the geometry couldn't be generated cleanly at this spot. Try a nearby spot, or reducing your model's triangle count first (e.g. Blender's Decimate modifier) if this keeps happening.";
   if (reason === 'overlap') return "Connector cannot be placed here — it overlaps another connector's carved area.";
   if (reason === 'too-big') return "Connector is too large for these parts — reduce the size and try again.";
   if (reason === 'too-long') return "Connector is too long for the material here — it would poke through the other side. Reduce the depth and try again.";
