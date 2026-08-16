@@ -6125,7 +6125,23 @@ function validateAllJoiningPoints(pieceKeys){
       checkedKeys.add(key);
       const piece = piecesByKey.get(key);
       if (!piece) continue;
-      const wt = checkWatertight(piece.triangles, lastSplitResult.tol);
+      let wt = checkWatertight(piece.triangles, lastSplitResult.tol);
+      if (!wt.watertight){
+        // A small residual gap here (as opposed to the hundreds/thousands a
+        // genuinely fused or badly-clashing connector leaves) is usually just
+        // a leftover numerical seam repairOpenEdges can close on a second
+        // pass — confirmed by direct testing, single-connector pieces can
+        // still leave a handful of open edges the first repair pass in
+        // csgSubtractTriangles didn't catch. Try again here, right before
+        // export, and only fall through to blocking if it still isn't
+        // fully closed — never ship a silently-patched export otherwise.
+        const repaired = repairOpenEdges(piece.triangles, lastSplitResult.tol);
+        const repairedWt = checkWatertight(repaired, lastSplitResult.tol);
+        if (repairedWt.watertight){
+          piece.triangles = repaired;
+          wt = repairedWt;
+        }
+      }
       if (!wt.watertight){
         errors.push("Part " + key + ": exported mesh is not watertight (" + wt.openEdges + " open edge(s)) — likely several different connector types placed very close together, or (if this model was run through the simplification feature) a thin wall or gap that got fused during simplification. Try spacing connectors further apart or using the same connector type for nearby ones, or re-simplify with a higher target triangle count / use the original model.");
       }
