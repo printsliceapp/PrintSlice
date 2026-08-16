@@ -114,6 +114,11 @@
     <p>PrintSlice checks that a connector is actually printable before placing it — it'll reject a spot if the connector would be too big for the part, deep enough to poke through the other side, or the surface there is too thin. Try a nearby spot with flatter, thicker material, or reduce the connector's size/depth.</p>
   </div>
 
+  <div class="faq-item">
+    <h3>Placing a connector is really slow, or says it's "taking too long"</h3>
+    <p>This is almost always down to how detailed the model is — the "Triangles" count shown after loading a file is a good indicator. A model with hundreds of thousands of triangles can take a lot longer to compute a connector than one with a few thousand, since PrintSlice works directly with the real geometry at that spot. If a specific model is consistently slow, running it through a mesh-simplification tool first (e.g. Blender's Decimate modifier) to bring the triangle count down — often with no visible difference in the printed part — usually fixes it.</p>
+  </div>
+
   <div class="section-label">Printing</div>
 
   <div class="faq-item">
