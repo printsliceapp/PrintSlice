@@ -7,12 +7,12 @@
 
 <style>
   :root{
-    --accent:#ff5a1f; --accent-hover:#e64d15; --accent-soft:rgba(255,90,31,.12); --accent-ink:#1a1408;
-    --ink:#1a1712; --ink-soft:#5c5748; --ink-faint:#8f897a;
-    --bg:#f2efe6; --paper:#fffdf8; --paper-soft:#eae5d7; --paper-raised:#ded7c4;
-    --line:rgba(26,23,18,.14); --line-strong:rgba(26,23,18,.26);
+    --accent:#124559; --accent-hover:#0d3546; --accent-soft:rgba(18,69,89,.14); --accent-ink:#eff6e0;
+    --ink:#01161e; --ink-soft:#3d5560; --ink-faint:#6b8791;
+    --bg:#e3ecda; --paper:#f8fbf0; --paper-soft:#dbe6d1; --paper-raised:#c8d8ba;
+    --line:rgba(1,22,30,.13); --line-strong:rgba(1,22,30,.24);
     --ok:#1f8a5f; --warn:#a3690a; --bad:#c1372a;
-    --viewport-bg:#17150f; --viewport-line:rgba(255,255,255,.06);
+    --viewport-bg:#01161e; --viewport-line:rgba(255,255,255,.06);
     --shadow-sm:0 1px 2px rgba(26,23,18,.06);
     --shadow-md:0 6px 18px rgba(26,23,18,.10);
     --shadow-lg:0 18px 40px rgba(26,23,18,.16);
@@ -399,8 +399,8 @@
       <h2><span class="step-num">1</span>Model</h2>
       <div id="dropzone" class="dropzone">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 15V4M12 4 8 8M12 4l4 4" stroke="#ff5a1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
-          <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="#ff5a1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M12 15V4M12 4 8 8M12 4l4 4" stroke="#124559" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="#124559" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
         </svg>
         <strong>Click to choose an STL file</strong><br>or drag one here
       </div>
@@ -4554,7 +4554,7 @@ function renderPreviewMarkers(){
   for (const j of manualJoints){
     if (j.maleKey !== thisKey && j.femaleKey !== thisKey) continue;
     const pt = jointWorldPoint(j);
-    const color = !j.valid ? 0xef4a63 : (j.id === selectedJointId ? 0x3ecf8e : 0xe35d45);
+    const color = !j.valid ? 0xef4a63 : (j.id === selectedJointId ? 0x3ecf8e : 0x124559);
     const markerRadius = Math.max(1.2, j.sz*0.12);
     const geom = new THREE.SphereGeometry(markerRadius, 12, 12);
     const mesh = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color }));
@@ -4766,7 +4766,7 @@ function updateBedHelper(bedX, bedY, center){
   grid.position.set(center[0], center[1], 0);
   bedHelper.add(grid);
   const edges = new THREE.EdgesGeometry(new THREE.PlaneGeometry(bedX, bedY));
-  const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color:0xe35d45 }));
+  const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color:0x124559 }));
   line.position.set(center[0], center[1], 0);
   bedHelper.add(line);
   scene.add(bedHelper);
@@ -5500,7 +5500,7 @@ function renderJointMarkers(){
   for (const p of computedPieces) byKey.set(pieceKeyOf(p), p);
   for (const j of manualJoints){
     const pt = jointWorldPoint(j);
-    const color = !j.valid ? 0xef4a63 : (j.id === selectedJointId ? 0x3ecf8e : 0xe35d45);
+    const color = !j.valid ? 0xef4a63 : (j.id === selectedJointId ? 0x3ecf8e : 0x124559);
     const markerRadius = Math.max(1.2, j.sz*0.12);
     const sides = [
       { key: j.maleKey, role: "Male", otherKey: j.femaleKey },
