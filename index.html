@@ -129,6 +129,21 @@
   .warn { color:var(--warn); font-weight:700; }
   .bad { color:var(--bad); font-weight:700; }
 
+  #knownIssueBanner{
+    display:flex; align-items:center; gap:12px;
+    background:#fff8e8; border-bottom:1px solid #e8c874;
+    color:#6b4d06; font-size:13px; line-height:1.5;
+    padding:10px 20px;
+  }
+  #knownIssueBanner span{ flex:1 1 auto; min-width:0; }
+  #knownIssueBanner b{ color:#4d3600; }
+  #knownIssueBanner a{ color:#4d3600; text-decoration:underline; }
+  #knownIssueBanner .close-btn{
+    margin-left:auto; margin-top:0; flex:none; cursor:pointer; background:none; border:none;
+    color:#6b4d06; font-size:18px; line-height:1; padding:2px 4px; width:auto;
+  }
+  #knownIssueBanner .close-btn:hover{ color:#4d3600; }
+
   #piecesList { display:flex; flex-direction:column; gap:9px; max-height:320px; overflow-y:auto; padding-right:2px; }
   .piece-row {
     border:1px solid var(--line-strong); border-radius:var(--radius-sm); padding:11px 13px; font-size:13px;
@@ -372,6 +387,10 @@
       <button class="btn-secondary" id="logoutBtn">Log out</button>
     </div>
   </header>
+  <div id="knownIssueBanner" style="display:none;">
+    <span><b>Known issue:</b> extremely complex or very dense models can sometimes fail to place connectors or export correctly. We're actively working on this — see the <a href="/help.html">Help &amp; FAQ</a> page for workarounds in the meantime.</span>
+    <button class="close-btn" id="knownIssueBannerClose" aria-label="Dismiss">&times;</button>
+  </div>
   <div id="appBody">
   <div id="sidebar">
     <div class="sub">Load an STL, enter your printer bed size, and split the model into watertight pieces that each fit on the bed.</div>
@@ -4768,6 +4787,21 @@ let selectedJointId = null;
 let addJointMode = false;
 let nextJointNum = 1;
 let pendingSimplifiedTriangles = null; // set while a simplify preview is showing, cleared once accepted/discarded
+
+// Shown once per browser until dismissed (persisted via localStorage) —
+// flags the known connector/export failure mode on very complex/dense
+// models (see simplifyTriangles' fused-feature warning and
+// validateAllJoiningPoints' watertightness check) so affected users
+// aren't left thinking the app is simply broken.
+const knownIssueBanner = document.getElementById("knownIssueBanner");
+const KNOWN_ISSUE_DISMISS_KEY = "printslice_dismissed_complexity_banner_v1";
+if (!localStorage.getItem(KNOWN_ISSUE_DISMISS_KEY)){
+  knownIssueBanner.style.display = "flex";
+}
+document.getElementById("knownIssueBannerClose").addEventListener("click", ()=>{
+  knownIssueBanner.style.display = "none";
+  localStorage.setItem(KNOWN_ISSUE_DISMISS_KEY, "1");
+});
 
 const fileInput = document.getElementById("fileInput");
 const dropzone = document.getElementById("dropzone");
