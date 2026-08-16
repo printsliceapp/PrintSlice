@@ -2057,7 +2057,20 @@ function buildConnectorPair(jp){
   // from that assumption (see femaleGap) — instead of slicing cleanly
   // through it, which is what a real boolean subtraction needs to produce
   // a clean, open cut rather than a knife-edge coincident face.
-  const CUT_MARGIN = 1.0;
+  // A flat 1mm margin only covered variation ALONG the click's own normal —
+  // it didn't account for the surface curving away WITHIN the socket's own
+  // footprint (a rounded or tapering neck, say), which leaves a thin uncut
+  // sliver right at the socket's rim where the true surface dips below the
+  // single flat entry plane the cutter assumed (confirmed by direct
+  // testing/user report: a round socket near a tapered surface left visible
+  // wedges of un-carved material at its edges). Scaling the margin with the
+  // connector's own footprint — bigger sockets are more likely to span
+  // real curvature — makes it deep enough to clear that in the common case;
+  // any placement where this pushes the cut through the female piece's far
+  // side is still caught and rejected by validateJoiningPoint's own
+  // "too long for the material" check, so this can't silently corrupt the
+  // export.
+  const CUT_MARGIN = Math.max(3.0, Math.min(width,height)*0.5);
 
   if (useStyle === 'pins'){
     const radius = Math.min(outer1, outer2);
@@ -3741,7 +3754,20 @@ function buildConnectorPair(jp){
   // from that assumption (see femaleGap) — instead of slicing cleanly
   // through it, which is what a real boolean subtraction needs to produce
   // a clean, open cut rather than a knife-edge coincident face.
-  const CUT_MARGIN = 1.0;
+  // A flat 1mm margin only covered variation ALONG the click's own normal —
+  // it didn't account for the surface curving away WITHIN the socket's own
+  // footprint (a rounded or tapering neck, say), which leaves a thin uncut
+  // sliver right at the socket's rim where the true surface dips below the
+  // single flat entry plane the cutter assumed (confirmed by direct
+  // testing/user report: a round socket near a tapered surface left visible
+  // wedges of un-carved material at its edges). Scaling the margin with the
+  // connector's own footprint — bigger sockets are more likely to span
+  // real curvature — makes it deep enough to clear that in the common case;
+  // any placement where this pushes the cut through the female piece's far
+  // side is still caught and rejected by validateJoiningPoint's own
+  // "too long for the material" check, so this can't silently corrupt the
+  // export.
+  const CUT_MARGIN = Math.max(3.0, Math.min(width,height)*0.5);
 
   if (useStyle === 'pins'){
     const radius = Math.min(outer1, outer2);
