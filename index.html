@@ -4919,6 +4919,32 @@ async function previewSimplify(){
     simplifyResultText.innerHTML =
       "Preview: <b style='color:var(--ink)'>" + simplified.length.toLocaleString() + " triangles</b> (was " + currentTriangles.length.toLocaleString() + "). " +
       "Rotate/zoom the model on the right to check it still looks right before deciding.";
+
+    // Vertex-clustering sizes its grid purely from triangle-count target, with
+    // no awareness of the model's actual feature sizes — if a wall or gap is
+    // thinner than the resulting cell size, clustering can fuse it into a
+    // neighboring surface instead of just thinning it out (confirmed by direct
+    // testing: two parallel plates closer together than the cell size get
+    // pinched together). That damage doesn't always show up as an obviously
+    // broken preview, but it corrupts the mesh in a way that later blows up
+    // into a large number of open edges once connectors are carved into it —
+    // so check for it right here, immediately after simplifying, rather than
+    // letting the user discover it only at export time.
+    const simplifiedBBox = computeBBox(simplified);
+    const diag = length3(sub3(simplifiedBBox.max, simplifiedBBox.min)) || 1;
+    const wt = checkWatertight(simplified, diag*1e-6);
+    // A handful of open edges (a few, usually at poles/seams of the original
+    // mesh) is normal and not worth alarming the user over — confirmed by
+    // direct testing, even a clean sphere lands around 8. Only flag counts
+    // large enough to actually indicate fused geometry rather than routine
+    // clustering noise.
+    const openEdgeThreshold = Math.max(20, Math.round(simplified.length * 0.005));
+    if (wt.openEdges > openEdgeThreshold){
+      simplifyResultText.innerHTML +=
+        "<br><span class='bad'>Warning: this simplified version has " + wt.openEdges.toLocaleString() + " open edge(s) — " +
+        "likely a thin wall or small gap got fused by the simplification. Placing connectors on it may fail to export. " +
+        "Try a higher target triangle count, or use the original model as-is.</span>";
+    }
   } catch (err){
     console.error("simplifyTriangles failed:", err);
     reportClientError("simplifyTriangles failed: " + err.message, { stack: err.stack, data: { triCount: currentTriangles.length, target } });
@@ -6067,7 +6093,7 @@ function validateAllJoiningPoints(pieceKeys){
       if (!piece) continue;
       const wt = checkWatertight(piece.triangles, lastSplitResult.tol);
       if (!wt.watertight){
-        errors.push("Part " + key + ": exported mesh is not watertight (" + wt.openEdges + " open edge(s)) — likely several different connector types placed very close together. Try spacing connectors further apart, or use the same connector type for nearby ones.");
+        errors.push("Part " + key + ": exported mesh is not watertight (" + wt.openEdges + " open edge(s)) — likely several different connector types placed very close together, or (if this model was run through the simplification feature) a thin wall or gap that got fused during simplification. Try spacing connectors further apart or using the same connector type for nearby ones, or re-simplify with a higher target triangle count / use the original model.");
       }
     }
   }
