@@ -43,12 +43,21 @@ exports.handler = async (event) => {
       console.error('No supabase_user_id on subscription', subscription.id);
       return;
     }
+    // As of Stripe's newer API versions, current_period_end lives on the
+    // subscription ITEM, not the subscription itself — the old top-level
+    // field is gone. Reading only the old field silently produced NaN here,
+    // and .toISOString() on an Invalid Date throws, crashing this whole
+    // handler before the database write ever ran (confirmed by direct
+    // testing against a real failed webhook delivery — every subscription
+    // sync was failing this way, not just one user's). Falling back to the
+    // old field keeps this working if Stripe's shape ever reverts.
+    const periodEndRaw = subscription.items?.data?.[0]?.current_period_end ?? subscription.current_period_end;
     await supabaseAdmin.from('subscriptions').upsert({
       user_id: userId,
       stripe_customer_id: subscription.customer,
       stripe_subscription_id: subscription.id,
       status: subscription.status, // 'active' | 'trialing' | 'past_due' | 'canceled' | ...
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_end: periodEndRaw ? new Date(periodEndRaw * 1000).toISOString() : null,
       updated_at: new Date().toISOString(),
     });
   }
