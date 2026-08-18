@@ -9,3 +9,13 @@
 # for the functions — there's no bundler/compile step for the static site itself.
 [build.environment]
   NODE_VERSION = "20"
+
+# Root URL now shows the marketing/welcome page instead of the app's own
+# login/paywall gate — a 200 rewrite (not a redirect) so the address bar
+# stays on "/" rather than jumping to "/welcome.html". The app itself is
+# unaffected and stays reachable at "/index.html", which is what every
+# "Open the app" / "Open App" link across the site already points to.
+[[redirects]]
+  from = "/"
+  to = "/welcome.html"
+  status = 200
