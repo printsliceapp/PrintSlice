@@ -56,11 +56,22 @@
   .btn-outline:hover{ border-color:var(--ink); }
   .cta-note{ font-size:12.5px; color:var(--ink-faint); margin-top:16px; font-family:var(--mono); }
 
-  .hero{ padding-top:64px; position:relative; }
+  .hero{ display:grid; grid-template-columns:1.3fr 1fr; gap:48px; align-items:center; padding-top:64px; position:relative; }
   .hero::before{
     content:""; position:absolute; top:-120px; right:-160px; width:560px; height:560px; z-index:-1;
     background:radial-gradient(circle, var(--accent-soft) 0%, transparent 68%); pointer-events:none;
   }
+  .hero-side{
+    aspect-ratio:1/1; border-radius:12px; border:1px solid var(--line-strong);
+    background-color:var(--viewport-bg);
+    background-image:
+      linear-gradient(var(--viewport-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--viewport-line) 1px, transparent 1px);
+    background-size:28px 28px;
+    display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;
+    box-shadow:0 30px 60px -20px rgba(26,23,18,.35), 0 0 0 8px var(--paper);
+  }
+  .hero-side svg{ width:52%; height:52%; opacity:.95; filter:drop-shadow(0 0 18px rgba(18,69,89,.35)); }
   .hero-visual{
     aspect-ratio:1920/882; width:100%; margin-top:48px; border-radius:12px; border:1px solid var(--line-strong);
     background-color:var(--viewport-bg);
@@ -127,6 +138,8 @@
   .footer-copy{ font-size:12.5px; color:var(--ink-faint); font-family:var(--mono); }
 
   @media (max-width: 860px){
+    .hero{ grid-template-columns:1fr; }
+    .hero-side{ display:none; }
     .stats{ grid-template-columns:1fr; }
     .steps{ grid-template-columns:1fr; }
     .connectors{ grid-template-columns:1fr; }
@@ -181,10 +194,17 @@
       <div class="cta-note">$8.99/month · cancel anytime · runs entirely in your browser</div>
       <div class="cta-note"><a href="/early-access.html">Want to try it free? Request early access →</a></div>
     </div>
-    <div class="hero-visual">
-      <img src="/hero-screenshot.png" alt="PrintSlice 3D viewport showing a loaded model" width="1360" height="768">
+    <div class="hero-side">
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 6 12 26v48l38 20 38-20V26L50 6Z" stroke="#124559" stroke-width="2" stroke-linejoin="round"></path>
+        <path d="M12 26l38 20 38-20M50 46v48" stroke="#124559" stroke-width="2" stroke-linejoin="round"></path>
+      </svg>
     </div>
   </section>
+
+  <div class="hero-visual">
+    <img src="/hero-screenshot.png" alt="PrintSlice 3D viewport showing a loaded model" width="1360" height="768">
+  </div>
 
   <div class="stats">
     <div class="stat"><div class="num">0.2mm</div><div class="label">Default fit clearance</div></div>
