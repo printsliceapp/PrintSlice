@@ -45,11 +45,15 @@ exports.handler = async (event) => {
   try {
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: sub.stripe_customer_id,
-      return_url: `${siteUrl}/`,
+      return_url: `${siteUrl}/app.html`,
     });
     return { statusCode: 200, body: JSON.stringify({ url: portalSession.url }) };
   } catch (err) {
     console.error('create-portal-session error:', err);
-    return { statusCode: 500, body: JSON.stringify({ error: 'Could not open billing portal.' }) };
+    // Temporarily surfacing the real Stripe error message (not just a
+    // generic one) to the client while diagnosing a live failure — safe
+    // here since only the already-authenticated owner of this subscription
+    // ever sees it, never a stranger.
+    return { statusCode: 500, body: JSON.stringify({ error: 'Could not open billing portal: ' + (err.message || 'unknown error') }) };
   }
 };
