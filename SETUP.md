@@ -59,6 +59,15 @@ Replace both with the values from step 1.4. These two are safe to be public/comm
 
 Once everything works in Stripe test mode, flip Stripe to **Live mode**, create the same product/price there, and swap `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, and `STRIPE_WEBHOOK_SECRET` in Netlify for the live-mode equivalents (you'll need a separate live-mode webhook endpoint too, same URL, created the same way).
 
+## 7. Maintenance: auditing subscriber data
+
+`scripts/audit-subscriptions.js` checks every row in the `subscriptions` table against Stripe and flags any with a `stripe_customer_id` that no longer exists there (the same issue found on 2026-08-18, where a webhook crash left some rows stale). Read-only — it never writes anything, just prints SQL for you to run on any row it flags. Run it locally with your own keys:
+
+```bash
+npm install
+SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... STRIPE_SECRET_KEY=... node scripts/audit-subscriptions.js
+```
+
 ---
 
 **If you get stuck on any step, tell me what you're seeing and I'll help debug it** — I just can't complete the account-creation/credential-entry steps themselves on your behalf.
