@@ -56,26 +56,18 @@
   .btn-outline:hover{ border-color:var(--ink); }
   .cta-note{ font-size:12.5px; color:var(--ink-faint); margin-top:16px; font-family:var(--mono); }
 
-  .hero{ display:grid; grid-template-columns:1.1fr 1fr; gap:64px; align-items:center; padding-top:64px; position:relative; }
+  .hero{ padding-top:64px; position:relative; }
   .hero::before{
     content:""; position:absolute; top:-120px; right:-160px; width:560px; height:560px; z-index:-1;
     background:radial-gradient(circle, var(--accent-soft) 0%, transparent 68%); pointer-events:none;
   }
   .hero-visual{
-    aspect-ratio:4/3.1; border-radius:12px; border:1px solid var(--line-strong);
+    aspect-ratio:1920/882; width:100%; margin-top:48px; border-radius:12px; border:1px solid var(--line-strong);
     background-color:var(--viewport-bg);
     display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;
     box-shadow:0 30px 60px -20px rgba(26,23,18,.35), 0 0 0 8px var(--paper);
   }
   .hero-visual img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .hero-visual::before{
-    content:"3D VIEWPORT — split model preview"; position:absolute; bottom:16px; left:18px;
-    font-family:var(--mono); font-size:11px; letter-spacing:.04em; color:#c9c2ac; text-transform:uppercase;
-    text-shadow:0 1px 4px rgba(0,0,0,.6);
-  }
-  .hero-visual::after{
-    content:""; position:absolute; inset:0; box-shadow:inset 0 0 80px rgba(18,69,89,.08); pointer-events:none;
-  }
 
   .stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line-strong); border:1px solid var(--line-strong); border-radius:8px; overflow:hidden; margin-top:64px; box-shadow:0 12px 30px -12px rgba(26,23,18,.12); }
   .stat{ background:var(--paper); padding:26px 24px; }
@@ -135,7 +127,6 @@
   .footer-copy{ font-size:12.5px; color:var(--ink-faint); font-family:var(--mono); }
 
   @media (max-width: 860px){
-    .hero{ grid-template-columns:1fr; }
     .stats{ grid-template-columns:1fr; }
     .steps{ grid-template-columns:1fr; }
     .connectors{ grid-template-columns:1fr; }
