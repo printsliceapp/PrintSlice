@@ -10,18 +10,11 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# Root URL now shows the marketing/welcome page instead of the app's own
-# login/paywall gate — a 200 rewrite (not a redirect) so the address bar
-# stays on "/" rather than jumping to "/welcome.html". The app itself is
-# unaffected and stays reachable at "/index.html", which is what every
-# "Open the app" / "Open App" link across the site already points to.
-# `force = true` is required here — Netlify's default "shadowing" behavior
-# serves a static file that exists at the "from" path (index.html does,
-# since it's served at "/") instead of applying the rule at all; without
-# this the redirect is silently ignored (confirmed by direct testing on
-# the live site).
-[[redirects]]
-  from = "/"
-  to = "/welcome.html"
-  status = 200
-  force = true
+# No redirect rule needed for the root URL: the marketing page IS index.html
+# (renamed from welcome.html) so it's served at "/" natively, and the app
+# itself was renamed to app.html to avoid colliding with Netlify's "Pretty
+# URLs" setting, which silently canonicalizes any request for "/index.html"
+# down to "/" — that collision was what broke a previous redirect-based
+# version of this (confirmed by direct testing: "Open the app" bounced back
+# to the marketing page instead of reaching the tool, since both it and
+# Pretty URLs' own canonicalization were racing for the same "/" path).
