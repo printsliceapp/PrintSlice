@@ -29,20 +29,14 @@ exports.handler = async (event) => {
     return { statusCode: 401, body: JSON.stringify({ error: 'Invalid session.' }) };
   }
 
-  // TEMP diagnostic tag while tracking down a live "wrong customer id"
-  // report — included on every response below so the client can see
-  // exactly which authenticated user/row this request actually resolved,
-  // without needing server log access. Remove once resolved.
-  const debugTag = 'uid=' + userData.user.id + ' email=' + userData.user.email;
-
-  const { data: sub, error: subErr } = await supabaseAdmin
+  const { data: sub } = await supabaseAdmin
     .from('subscriptions')
     .select('stripe_customer_id')
     .eq('user_id', userData.user.id)
     .maybeSingle();
 
   if (!sub?.stripe_customer_id) {
-    return { statusCode: 404, body: JSON.stringify({ error: 'No subscription on file. [' + debugTag + (subErr ? ' dberr=' + subErr.message : '') + ']' }) };
+    return { statusCode: 404, body: JSON.stringify({ error: 'No subscription on file.' }) };
   }
 
   const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
@@ -56,10 +50,6 @@ exports.handler = async (event) => {
     return { statusCode: 200, body: JSON.stringify({ url: portalSession.url }) };
   } catch (err) {
     console.error('create-portal-session error:', err);
-    // Temporarily surfacing the real Stripe error message (not just a
-    // generic one) to the client while diagnosing a live failure — safe
-    // here since only the already-authenticated owner of this subscription
-    // ever sees it, never a stranger.
-    return { statusCode: 500, body: JSON.stringify({ error: 'Could not open billing portal: ' + (err.message || 'unknown error') + ' [' + debugTag + ']' }) };
+    return { statusCode: 500, body: JSON.stringify({ error: 'Could not open billing portal.' }) };
   }
 };
