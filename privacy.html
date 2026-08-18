@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — PrintSlice</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%B2%3C/text%3E%3C/svg%3E">
+
+<style>
+  :root{
+    --accent:#124559; --accent-hover:#0d3546; --accent-soft:rgba(18,69,89,.14);
+    --ink:#01161e; --ink-soft:#3d5560; --ink-faint:#6b8791;
+    --bg:#e3ecda; --paper:#f8fbf0; --paper-soft:#dbe6d1;
+    --line:rgba(1,22,30,.13); --line-strong:rgba(1,22,30,.24);
+    --radius:5px; --radius-lg:7px;
+    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+    min-height:100vh;
+  }
+  a{ color:var(--accent-hover); }
+  a:hover{ color:var(--accent); }
+  .wrap{ max-width:760px; margin:0 auto; padding:32px 20px 80px; }
+  .nav{ display:flex; align-items:center; justify-content:space-between; margin-bottom:40px; }
+  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink); }
+  .brand-icon{
+    width:32px; height:32px; border-radius:3px; flex:none;
+    background:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .brand-name{ font-weight:800; font-size:14px; letter-spacing:.06em; text-transform:uppercase; }
+  .nav-links{ display:flex; gap:22px; font-size:13px; }
+  .nav-links a{ color:var(--ink-soft); text-decoration:none; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+  .nav-links a:hover{ color:var(--ink); }
+  h1{ font-size:30px; margin:0 0 10px; letter-spacing:-.01em; }
+  .lede{ color:var(--ink-soft); font-size:15px; margin:0 0 40px; line-height:1.6; }
+  .legal{
+    border:1px solid var(--line-strong); border-radius:var(--radius-lg); background:var(--paper);
+    padding:32px 34px;
+  }
+  .legal h2{ font-size:16.5px; margin:28px 0 10px; color:var(--ink); }
+  .legal h2:first-child{ margin-top:0; }
+  .legal p{ font-size:14px; color:var(--ink-soft); line-height:1.7; margin:0 0 12px; }
+  .legal ul{ margin:0 0 12px; padding-left:20px; }
+  .legal li{ font-size:14px; color:var(--ink-soft); line-height:1.7; margin-bottom:6px; }
+  .legal strong{ color:var(--ink); }
+  .legal table{ width:100%; border-collapse:collapse; margin:0 0 14px; font-size:13.5px; }
+  .legal th{ text-align:left; color:var(--ink); padding:8px 10px; border-bottom:1px solid var(--line-strong); font-size:12px; text-transform:uppercase; letter-spacing:.03em; }
+  .legal td{ padding:8px 10px; border-bottom:1px solid var(--line); color:var(--ink-soft); vertical-align:top; }
+  .updated{ font-size:12.5px; color:var(--ink-faint); margin:0 0 28px; font-family:var(--mono); }
+  footer{ margin-top:48px; text-align:center; font-size:13px; color:var(--ink-faint); }
+  footer a{ color:var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav">
+    <a class="brand" href="/">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18">
+          <path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"></path>
+          <path d="M3 7l9 5 9-5M12 12v10" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"></path>
+        </svg>
+      </div>
+      <span class="brand-name">PrintSlice</span>
+    </a>
+    <div class="nav-links">
+      <a href="/">App</a>
+      <a href="/help.html">Help</a>
+      <a href="/contact.html">Contact</a>
+      <a href="/terms.html">Terms</a>
+    </div>
+  </div>
+
+  <h1>Privacy Policy</h1>
+  <p class="lede">What we collect, why, and how it's handled when you use PrintSlice.</p>
+
+  <div class="legal">
+    <p class="updated">Last updated: 18 August 2026</p>
+
+    <h2>1. Your models never leave your device</h2>
+    <p>PrintSlice's core function — loading an STL file, splitting it, generating connectors, and exporting the result — runs entirely inside your own browser. Your 3D model files are never uploaded to, transmitted to, or stored on our servers at any point. We have no access to them.</p>
+
+    <h2>2. What we do collect</h2>
+    <p>Beyond your model files, running the service does involve some personal data. Here's exactly what, and why:</p>
+    <table>
+      <tr><th>Data</th><th>Why we collect it</th><th>Where it's stored</th></tr>
+      <tr><td>Email address, password (hashed)</td><td>To create and secure your account</td><td>Supabase (our auth/database provider)</td></tr>
+      <tr><td>Subscription status, Stripe customer/subscription IDs</td><td>To know whether your account has an active paid subscription</td><td>Supabase, kept in sync by Stripe's webhook</td></tr>
+      <tr><td>Payment card details</td><td>To process your subscription payment</td><td>Stripe only — we never see or store full card details ourselves</td></tr>
+      <tr><td>Name, email, message (if you use the contact or early-access form)</td><td>To respond to your enquiry or review your early-access request</td><td>Netlify Forms</td></tr>
+      <tr><td>Error reports (message, stack trace, mesh statistics like triangle counts — never your model geometry itself)</td><td>To diagnose bugs in the connector-placement engine</td><td>Supabase</td></tr>
+    </table>
+    <p>We also use your browser's local storage (not third-party tracking cookies) to keep you signed in between visits and to remember whether you've dismissed certain on-page notices. This stays on your own device and isn't sent to us.</p>
+
+    <h2>3. Third parties we use</h2>
+    <p>We rely on a small number of service providers to run PrintSlice, each of whom processes data on our behalf under their own privacy and security terms:</p>
+    <ul>
+      <li><strong>Supabase</strong> — authentication and database hosting.</li>
+      <li><strong>Stripe</strong> — subscription billing and payment processing.</li>
+      <li><strong>Netlify</strong> — website hosting, serverless functions, and form submissions.</li>
+    </ul>
+    <p>We don't sell your personal data to anyone, and we don't share it with third parties for their own marketing purposes.</p>
+
+    <h2>4. How long we keep data</h2>
+    <p>We keep account and subscription data for as long as your account exists, so we can maintain your access and billing history. Contact and early-access form submissions are kept long enough to respond to and process your request. You can ask us to delete your data at any time (see Section 6).</p>
+
+    <h2>5. Legal basis for processing</h2>
+    <p>We process your data to perform our contract with you (running your account and subscription), to comply with legal obligations (such as billing records), and, in limited cases like error reports, on the basis of our legitimate interest in keeping the service working correctly.</p>
+
+    <h2>6. Your rights</h2>
+    <p>Depending on where you live, you may have rights to access, correct, delete, or export the personal data we hold about you, or to object to or restrict certain processing. To exercise any of these, contact us using the details below and we'll respond as required by applicable law. If you're in the UK or EU, you also have the right to complain to your local data protection authority (in the UK, the <a href="https://ico.org.uk" target="_blank" rel="noopener">Information Commissioner's Office</a>) if you believe we've mishandled your data.</p>
+
+    <h2>7. Children's privacy</h2>
+    <p>PrintSlice isn't directed at children, and paid features require you to be at least 18 (or have a parent/guardian's permission, per our <a href="/terms.html">Terms &amp; Conditions</a>). We don't knowingly collect personal data from children.</p>
+
+    <h2>8. Changes to this policy</h2>
+    <p>We may update this policy from time to time, reflected by the "Last updated" date above. Continued use of the service after a change means you accept the updated policy.</p>
+
+    <h2>9. Contact</h2>
+    <p>Questions about this policy or your data? Reach out via the <a href="/contact.html">contact page</a> or email <a href="mailto:printsliceapp@gmail.com">printsliceapp@gmail.com</a>.</p>
+  </div>
+
+  <footer>
+    <a href="/">← Back to PrintSlice</a>
+  </footer>
+</div>
+
+
+</body></html>
