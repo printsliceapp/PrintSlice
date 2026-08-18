@@ -15,7 +15,13 @@
 # stays on "/" rather than jumping to "/welcome.html". The app itself is
 # unaffected and stays reachable at "/index.html", which is what every
 # "Open the app" / "Open App" link across the site already points to.
+# `force = true` is required here — Netlify's default "shadowing" behavior
+# serves a static file that exists at the "from" path (index.html does,
+# since it's served at "/") instead of applying the rule at all; without
+# this the redirect is silently ignored (confirmed by direct testing on
+# the live site).
 [[redirects]]
   from = "/"
   to = "/welcome.html"
   status = 200
+  force = true
