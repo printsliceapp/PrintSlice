@@ -681,12 +681,19 @@ async function refreshGate(){
 
     const { data: sub, error: subErr } = await sb
       .from("subscriptions")
-      .select("status")
+      .select("status, current_period_end")
       .eq("user_id", session.user.id)
       .maybeSingle();
     if (subErr) throw subErr;
 
-    const active = sub && (sub.status === "active" || sub.status === "trialing");
+    // current_period_end doubles as a hard expiry, not just a display value —
+    // this is what makes a time-limited grant (a week of early access, say)
+    // actually self-expire with no cron job or manual revocation needed: the
+    // gate just stops granting access once this timestamp passes. A null
+    // current_period_end (nothing set) is treated as unbounded, not expired,
+    // so this doesn't retroactively lock out any row that predates this check.
+    const notExpired = !sub?.current_period_end || new Date(sub.current_period_end) > new Date();
+    const active = sub && (sub.status === "active" || sub.status === "trialing") && notExpired;
     if (active){
       authGate.hidden = true;
       appEl.hidden = false;
