@@ -525,6 +525,22 @@
 const SUPABASE_URL = "https://veyanovvkeirlayhxkav.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_XrMH5uYGeGZdUYvK4eTI2Q_40kHYrKX";
 
+// Lets another page (early-access.html, say) send someone here to create an
+// account and then land back where they started — e.g. after requesting
+// early access, so the person doing manual approvals doesn't have to chase
+// them down to sign up first. Captured into sessionStorage rather than only
+// read from the URL because Supabase's email-confirmation link (when that's
+// enabled) lands back here with no query string of its own; sessionStorage
+// survives that round trip, a bare URL param wouldn't. Only same-site
+// relative paths are honored — never an absolute/external URL — so this
+// can't be turned into an open redirect via a crafted "?next=" link.
+(function(){
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (next && next.startsWith("/") && !next.startsWith("//")){
+    sessionStorage.setItem("printslice_next", next);
+  }
+})();
+
 const authGate = document.getElementById("authGate");
 const appEl = document.getElementById("app");
 const cardLoading = document.getElementById("authCardLoading");
@@ -664,6 +680,19 @@ async function refreshGate(){
   try {
     const { data: { session }, error: sessionErr } = await sb.auth.getSession();
     if (sessionErr) throw sessionErr;
+
+    // Bounce back to wherever sent them here to sign up, the moment we know
+    // they're actually logged in — regardless of subscription status, since
+    // the point is just "you now have an account," not "you're subscribed."
+    // Cleared immediately so this only ever fires once, not on every future
+    // login this browser ever does.
+    const pendingNext = sessionStorage.getItem("printslice_next");
+    if (session && pendingNext){
+      sessionStorage.removeItem("printslice_next");
+      window.location.href = pendingNext;
+      return;
+    }
+
     if (!session){
       showCard(cardLogin);
       return;

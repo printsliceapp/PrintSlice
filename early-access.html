@@ -147,9 +147,18 @@ form.addEventListener('submit', async (e) => {
       body: encode(formData),
     });
     if (!res.ok) throw new Error('Submission failed');
-    statusEl.textContent = "You're on the list — we'll email you if you're picked.";
+    // Approval is manual, so there's nothing to unlock yet — but the person
+    // reviewing requests can only grant access to an EXISTING account, and
+    // chasing people by email to go sign up first was the actual bottleneck.
+    // Sending them to create an account right now, while they're already
+    // here, removes that whole back-and-forth. app.html sends them right
+    // back here (see its own "next" handling) once they're signed in.
+    statusEl.textContent = "You're on the list! Taking you to create an account — that's what lets us switch your access on.";
     statusEl.className = 'status-msg ok';
     form.reset();
+    setTimeout(() => {
+      window.location.href = '/app.html?next=' + encodeURIComponent('/early-access.html?joined=1');
+    }, 1800);
   } catch (err) {
     statusEl.textContent = "Something went wrong sending that — try emailing printsliceapp@gmail.com instead.";
     statusEl.className = 'status-msg err';
@@ -157,6 +166,17 @@ form.addEventListener('submit', async (e) => {
     submitBtn.disabled = false;
   }
 });
+
+// Landed back here right after creating an account (see app.html's "next"
+// handling) — swap the form out for a confirmation instead of just showing
+// the same empty form again, which would look like nothing happened.
+if (new URLSearchParams(window.location.search).get('joined') === '1'){
+  document.querySelector('.card').innerHTML =
+    '<p style="margin:0; font-size:15px; color:var(--ink); line-height:1.6;">' +
+    '<b>Account created — you\'re all set.</b><br><br>' +
+    'We\'ll review your request and email the address you signed up with once your access is switched on, usually within a few days.' +
+    '</p>';
+}
 </script>
 
 
