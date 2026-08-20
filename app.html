@@ -478,7 +478,7 @@
         <div id="partPreviewSeamKey" class="ppm-seam-key"></div>
         <button id="partPreviewAddBtn" class="btn-primary" style="margin-top:10px;">+ Add Joining Point</button>
         <div class="hint" style="margin-top:4px;">One connector per face — place a second one on a different face for a stronger join.</div>
-        <div class="hint" style="margin-top:4px;">While placing, the green shape on the model shows the connector's actual size — move the cursor to check it'll fit before clicking.</div>
+        <div class="hint" style="margin-top:4px;">While placing, the shape on the model shows the connector's actual size and position. Its color is a live fit check: <span style="color:#3ecf8e;font-weight:700;">green</span> = flat, reliable spot, <span style="color:#e0b336;font-weight:700;">yellow</span> = some curve nearby, <span style="color:#e0473c;font-weight:700;">red</span> = risky — try a flatter spot nearby.</div>
         <div id="ppmSettings" class="ppm-settings" hidden="">
           <div class="row">
             <div><label>Connector type</label>
@@ -4314,6 +4314,69 @@ function clearPreviewHighlight(){
     previewHighlightMesh = null;
   }
   if (previewRenderer) previewRenderer.domElement.style.cursor = "default";
+  lastFlatnessCheckPoint = null;
+  lastFlatnessScore = 0;
+}
+
+// Ring-samples the surface around a hover point to estimate how "flat" the
+// connector's own footprint actually is — the same quantity that caused the
+// tapered/curved-surface accuracy bug (a fixed cut margin has to cover
+// however far the true surface can dip away from the flat plane assumed at
+// the center point; a footprint that's genuinely flat needs almost none,
+// while one that dips several mm away needs a lot more, or is just a bad
+// spot for a connector). Casts `RING_SAMPLES` rays back onto previewMesh
+// around the hit point, using the hit's own tangent basis so the ring lies
+// in the surface's local plane rather than the screen's. Cheap-pathed with
+// a distance-moved cache (mousemove fires far more often than the surface
+// actually changes under the cursor) since each check is several real
+// raycasts against the full preview mesh.
+const RING_SAMPLES = 8;
+let lastFlatnessCheckPoint = null;
+let lastFlatnessScore = 0;
+function assessLocalFlatness(hitInfo, footprintRadius){
+  const p = hitInfo.point, basis = hitInfo.basis;
+  if (lastFlatnessCheckPoint){
+    const d = Math.hypot(p[0]-lastFlatnessCheckPoint[0], p[1]-lastFlatnessCheckPoint[1], p[2]-lastFlatnessCheckPoint[2]);
+    if (d < footprintRadius*0.25) return lastFlatnessScore;
+  }
+  lastFlatnessCheckPoint = p;
+
+  const rayStart = 5; // cast from this far above the assumed flat plane, back down along -normal
+  const searchDepth = rayStart + Math.max(10, footprintRadius*3);
+  let maxDeviation = 0;
+  const origin = new THREE.Vector3(), dir = new THREE.Vector3(
+    -basis[2][0], -basis[2][1], -basis[2][2]
+  );
+  // previewRaycaster is shared with the camera-based hover/click picking
+  // (see previewHandleMouseMove/previewHandleClick), which relies on its
+  // default near/far of 0/Infinity — save and restore so this function's
+  // shortened `far` doesn't linger and start missing distant camera rays.
+  const savedNear = previewRaycaster.near, savedFar = previewRaycaster.far;
+  for (let i = 0; i < RING_SAMPLES; i++){
+    const angle = (i / RING_SAMPLES) * Math.PI * 2;
+    const tx = Math.cos(angle) * footprintRadius, ty = Math.sin(angle) * footprintRadius;
+    origin.set(
+      p[0] + basis[0][0]*tx + basis[1][0]*ty + basis[2][0]*rayStart,
+      p[1] + basis[0][1]*tx + basis[1][1]*ty + basis[2][1]*rayStart,
+      p[2] + basis[0][2]*tx + basis[1][2]*ty + basis[2][2]*rayStart
+    );
+    previewRaycaster.set(origin, dir);
+    previewRaycaster.near = 0;
+    previewRaycaster.far = searchDepth;
+    const hits = previewRaycaster.intersectObject(previewMesh, false);
+    if (hits.length === 0){
+      // Missed the mesh entirely from right above the footprint edge — an
+      // edge/hole this close in is itself a strong "don't place a connector
+      // spanning this" signal, so treat it as maximally risky.
+      maxDeviation = Math.max(maxDeviation, footprintRadius);
+      continue;
+    }
+    maxDeviation = Math.max(maxDeviation, Math.abs(hits[0].distance - rayStart));
+  }
+  previewRaycaster.near = savedNear;
+  previewRaycaster.far = savedFar;
+  lastFlatnessScore = maxDeviation;
+  return maxDeviation;
 }
 
 // A shape at the exact size/position/orientation the actual connector
@@ -4355,10 +4418,10 @@ function showPreviewHoverMarker(hitInfo){
     previewHighlightMesh = new THREE.Mesh(geom, mat);
     previewHighlightMesh.renderOrder = 999;
     previewScene.add(previewHighlightMesh);
-    previewHoverShapeParams = { sz, depth, type, embed, protrude };
+    previewHoverShapeParams = { sz, depth, type, embed, protrude, outerHalf };
   }
 
-  const { embed, protrude } = previewHoverShapeParams;
+  const { embed, protrude, outerHalf } = previewHoverShapeParams;
   const n = new THREE.Vector3(hitInfo.basis[2][0], hitInfo.basis[2][1], hitInfo.basis[2][2]);
   previewHighlightMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), n);
   // centered between how far the connector embeds INTO the surface and how
@@ -4371,6 +4434,18 @@ function showPreviewHoverMarker(hitInfo){
     hitInfo.point[1] + n.y*offset,
     hitInfo.point[2] + n.z*offset
   );
+
+  // Color the marker by how flat the surface actually is within the
+  // connector's own footprint — green/yellow/red, same visual language as
+  // most slicers already use for support/overhang warnings. Thresholds
+  // scale a little with connector size: a bigger connector can shrug off
+  // a bit more surface dip than a tiny one before it becomes a real risk.
+  const deviation = assessLocalFlatness(hitInfo, outerHalf);
+  const safeLimit = Math.max(0.5, sz*0.08);
+  const riskyLimit = Math.max(1.5, sz*0.25);
+  const markerColor = deviation < safeLimit ? 0x3ecf8e : (deviation < riskyLimit ? 0xe0b336 : 0xe0473c);
+  previewHighlightMesh.material.color.setHex(markerColor);
+
   previewRenderer.domElement.style.cursor = "crosshair";
 }
 
