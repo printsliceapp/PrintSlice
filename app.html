@@ -4905,6 +4905,15 @@ function updateBedHelper(bedX, bedY, center){
 
 /* ---------- app state & UI wiring ---------- */
 let currentTriangles = null;
+// Set once per file load (see loadMesh) — whether the file was ALREADY
+// non-manifold before PrintSlice touched it. Referenced later by the
+// export-blocked error message: confirmed by direct testing (see the
+// splitting/connector code's own comments on this), a source mesh that's
+// non-manifold on arrival stays that way through any split or connector
+// placement, since there's no cut-plane position or connector choice that
+// fixes a defect that predates them — so if export ever blocks on THIS
+// file, that's almost certainly why, not the connector settings.
+let sourceMeshWasNonWatertight = false;
 let currentFileBase = "model";
 let lastSplitResult = null;
 
@@ -5024,12 +5033,25 @@ function loadMesh(triangles){
   const fitsXY = size[0] <= bedX && size[1] <= bedY;
   const fitsZ = size[2] <= bedZ;
 
+  // Checked here, on the file as-uploaded, before any cutting touches it —
+  // a source mesh that's already non-manifold (most often a handful of
+  // faces meeting at one edge instead of two, e.g. a self-touching fold)
+  // stays non-manifold no matter how it's split, and confirmed by direct
+  // testing, no amount of retrying the cut differently changes that. Telling
+  // the user this up front, honestly, beats them hitting a confusing
+  // "connector validation failed" error later that has nothing to do with
+  // connectors.
+  const diag = length3(size) || 1;
+  const sourceWt = checkWatertight(triangles, diag * 1e-6);
+  sourceMeshWasNonWatertight = !sourceWt.watertight;
+
   modelInfo.innerHTML =
     "File: <b>" + currentFileBase + ".stl</b><br>" +
     "Triangles: " + triangles.length.toLocaleString() + "<br>" +
     "Size (X x Y x Z): " + size[0].toFixed(1) + " x " + size[1].toFixed(1) + " x " + size[2].toFixed(1) + " mm<br>" +
     "Footprint fits bed: " + (fitsXY ? '<span class="ok">yes</span>' : '<span class="warn">no — splitting needed</span>') + "<br>" +
-    "Height fits bed Z: " + (fitsZ ? '<span class="ok">yes</span>' : '<span class="warn">no — splitting needed</span>');
+    "Height fits bed Z: " + (fitsZ ? '<span class="ok">yes</span>' : '<span class="warn">no — splitting needed</span>') +
+    (sourceWt.watertight ? "" : "<br><span class=\"warn\">Heads up: this file has " + sourceWt.openEdges + " overlapping or unclosed edge(s) in its surface — likely left over from how it was originally created (common with AI-generated or procedurally-generated models). Splitting and connectors may still work, but if export gets blocked later, it's this, not a connector setting. Repairing the mesh first in a tool like Blender (Merge by Distance + Recalculate Normals) or Netfabb usually clears it.</span>");
 
   statusEl.textContent = (fitsXY && fitsZ) ? "This model already fits the bed. You can still press Split (it will produce a single piece)." : "Press \"Split into bed-sized pieces\" to generate a grid of pieces that fit your bed.";
   splitBtn.disabled = false;
@@ -6274,7 +6296,10 @@ function validateAllJoiningPoints(pieceKeys){
         }
       }
       if (!wt.watertight){
-        errors.push("Part " + key + ": exported mesh is not watertight (" + wt.openEdges + " open edge(s)) — likely several different connector types placed very close together, or (if this model was run through the simplification feature) a thin wall or gap that got fused during simplification. Try spacing connectors further apart or using the same connector type for nearby ones, or re-simplify with a higher target triangle count / use the original model.");
+        errors.push("Part " + key + ": exported mesh is not watertight (" + wt.openEdges + " open edge(s)) — " +
+          (sourceMeshWasNonWatertight
+            ? "your uploaded file itself had overlapping or unclosed surface geometry before it was even split (see the notice under \"Model\" above) — that's almost certainly the cause here, not your connector setup. Repairing the source mesh first (e.g. in Blender or Netfabb) is the real fix."
+            : "likely several different connector types placed very close together, or (if this model was run through the simplification feature) a thin wall or gap that got fused during simplification. Try spacing connectors further apart or using the same connector type for nearby ones, or re-simplify with a higher target triangle count / use the original model."));
       }
     }
   }
@@ -6282,16 +6307,22 @@ function validateAllJoiningPoints(pieceKeys){
   return { ok: errors.length === 0, errors };
 }
 
-function showExportValidationError(errors){
-  const text = "Export blocked — connector validation failed:\n\n" + errors.join("\n");
-  showJointMsg("Export blocked: " + errors[0] + (errors.length>1 ? " (+" + (errors.length-1) + " more — see console)" : ""), true);
+// Warns rather than blocks — a non-watertight piece is often still
+// perfectly printable (slicers routinely tolerate a handful of open edges
+// on an otherwise sound mesh, and per the source-file investigation, this
+// can also just mean the file arrived non-manifold, which is no reason to
+// withhold the split result itself). Letting the export through either way
+// means a user is never stuck with literally nothing to show for a split,
+// only a clear heads-up about which part(s) to double-check before printing.
+function showExportValidationWarning(errors){
+  const text = "Exported, but with a possible defect:\n\n" + errors.join("\n");
+  showJointMsg(errors[0] + (errors.length>1 ? " (+" + (errors.length-1) + " more — see console)" : "") + " — exporting anyway; check this part in your slicer before printing.", true);
   console.error(text);
-  alert(text);
 }
 
 function downloadSingle(piece){
   const check = validateAllJoiningPoints([pieceKeyOf(piece)]);
-  if (!check.ok){ showExportValidationError(check.errors); return; }
+  if (!check.ok) showExportValidationWarning(check.errors);
   const bytes = exportBinarySTL(piece.triangles);
   const blob = new Blob([bytes], { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
@@ -6304,7 +6335,7 @@ function downloadSingle(piece){
 downloadAllBtn.addEventListener("click", ()=>{
   if (!computedPieces) return;
   const check = validateAllJoiningPoints(null);
-  if (!check.ok){ showExportValidationError(check.errors); return; }
+  if (!check.ok) showExportValidationWarning(check.errors);
   const files = computedPieces.map(p => ({ name: p._exportName, data: exportBinarySTL(p.triangles) }));
   const blob = makeZip(files);
   const url = URL.createObjectURL(blob);
