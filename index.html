@@ -7,15 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<script type="importmap">
-{
-  "imports": { "three": "https://unpkg.com/three@0.184.0/build/three.module.js" },
-  "integrity": {
-    "https://unpkg.com/three@0.184.0/build/three.module.js": "sha384-8FCZ1eVO6it4+pbec2aDtnTrwjWXZLJRC+MAGCIPDgsYnUrl/E0A2YlF8ioMKI/J",
-    "https://unpkg.com/three@0.184.0/build/three.core.js": "sha384-dw2ooPewaEIrAgl6oFDBmmBWCE9oW9LxRGcfwZ0hLvEprzo202wXl7vCYHRlSnOT"
-  }
-}
-</script>
 
 <style>
   :root{
@@ -99,7 +90,7 @@
   /* Hero */
   .hero{ display:grid; grid-template-columns:1.05fr 1fr; gap:56px; align-items:center; padding-top:66px; }
   .hero-3d{ aspect-ratio:1/1; position:relative; overflow:hidden; }
-  .hero-3d canvas{ display:block; width:100%; height:100%; }
+  .hero-3d video{ display:block; width:100%; height:100%; object-fit:cover; }
   .hero-3d-tag{ position:absolute; top:16px; left:16px; font-family:var(--mono); font-size:10.5px; letter-spacing:.05em; color:var(--ink-faint); text-transform:uppercase; display:flex; align-items:center; gap:7px; z-index:2; }
   .hero-3d-tag .blip{ width:6px; height:6px; border-radius:50%; background:var(--accent); animation:blip 1.6s ease-in-out infinite; }
   @keyframes blip{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
@@ -240,7 +231,8 @@
     <div class="sheet">
       <div class="crop tl"></div><div class="crop tr"></div><div class="crop bl"></div><div class="crop br"></div>
       <div class="hero-3d" id="hero3d">
-        <div class="hero-3d-tag"><span class="blip"></span>Live preview</div>
+        <div class="hero-3d-tag"><span class="blip"></span>Preview</div>
+        <video src="/hero-3d.mp4" autoplay loop muted playsinline aria-label="PrintSlice splitting a 3D model and adding connectors"></video>
       </div>
       <div class="title-block"><span>DWG NO. PS—004</span><span>SCALE 1:4</span><span>REV A</span></div>
     </div>
@@ -419,140 +411,4 @@ if ("IntersectionObserver" in window && connStage){
   io.observe(connStage);
 }
 </script>
-
-<script type="module">
-import * as THREE from "three";
-
-const mount = document.getElementById('hero3d');
-const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 50);
-camera.position.set(1.1, 1.0, 3.4);
-camera.lookAt(0, 0, 0);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-mount.appendChild(renderer.domElement);
-
-scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-const key = new THREE.DirectionalLight(0xffffff, 0.8);
-key.position.set(2.4, 3.6, 2.8);
-scene.add(key);
-
-function roundedRectShape(w, h, r){
-  const shape = new THREE.Shape();
-  const x = -w / 2, y = -h / 2;
-  shape.moveTo(x, y + r);
-  shape.lineTo(x, y + h - r);
-  shape.quadraticCurveTo(x, y + h, x + r, y + h);
-  shape.lineTo(x + w - r, y + h);
-  shape.quadraticCurveTo(x + w, y + h, x + w, y + h - r);
-  shape.lineTo(x + w, y + r);
-  shape.quadraticCurveTo(x + w, y, x + w - r, y);
-  shape.lineTo(x + r, y);
-  shape.quadraticCurveTo(x, y, x, y + r);
-  return shape;
-}
-
-const PANEL = 0.84, PANEL_R = 0.15, PANEL_DEPTH = 0.1, OFFSET = 0.46;
-const INK = 0x01161e, ACCENT = 0x124559;
-
-const panelGeo = new THREE.ExtrudeGeometry(roundedRectShape(PANEL, PANEL, PANEL_R), { depth: PANEL_DEPTH, bevelEnabled: false });
-panelGeo.translate(0, 0, -PANEL_DEPTH / 2);
-panelGeo.rotateX(-Math.PI / 2);
-
-const quadrants = [
-  { x: -OFFSET, y: OFFSET }, { x: OFFSET, y: OFFSET },
-  { x: -OFFSET, y: -OFFSET }, { x: OFFSET, y: -OFFSET },
-];
-
-const group = new THREE.Group();
-const pieces = [];
-const gapDirs = [[-1, 1], [1, 1], [-1, -1], [1, -1]];
-
-quadrants.forEach((q, i) => {
-  const mat = new THREE.MeshStandardMaterial({ color: 0xf8fbf0, roughness: 0.7, metalness: 0 });
-  const mesh = new THREE.Mesh(panelGeo, mat);
-  mesh.position.set(q.x, 0, q.y);
-  mesh.userData.homeX = q.x;
-  mesh.userData.homeZ = q.y;
-  mesh.userData.dir = gapDirs[i];
-
-  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(panelGeo, 30), new THREE.LineBasicMaterial({ color: INK }));
-  mesh.add(edges);
-
-  group.add(mesh);
-  pieces.push(mesh);
-});
-
-const diamondShape = roundedRectShape(0.36, 0.36, 0.05);
-const diamondGeo = new THREE.ExtrudeGeometry(diamondShape, { depth: PANEL_DEPTH + 0.04, bevelEnabled: false });
-diamondGeo.translate(0, 0, -(PANEL_DEPTH + 0.04) / 2);
-diamondGeo.rotateX(-Math.PI / 2);
-diamondGeo.rotateY(Math.PI / 4);
-const diamond = new THREE.Mesh(diamondGeo, new THREE.MeshStandardMaterial({ color: ACCENT, roughness: 0.5 }));
-diamond.position.set(0, 0.01, 0);
-const diamondEdges = new THREE.LineSegments(new THREE.EdgesGeometry(diamondGeo, 20), new THREE.LineBasicMaterial({ color: INK }));
-diamond.add(diamondEdges);
-group.add(diamond);
-
-function addTab(host, hostLocal, dir){
-  const shaftLen = 0.24, shaftW = 0.09, shaftH = 0.06;
-  const tab = new THREE.Mesh(new THREE.BoxGeometry(shaftW, shaftH, shaftLen), new THREE.MeshStandardMaterial({ color: ACCENT, roughness: 0.5 }));
-  const angle = Math.atan2(dir.x, dir.z);
-  tab.rotation.y = angle;
-  tab.position.set(hostLocal.x + dir.x * shaftLen * 0.5, 0, hostLocal.z + dir.z * shaftLen * 0.5);
-  const tabEdges = new THREE.LineSegments(new THREE.EdgesGeometry(tab.geometry, 20), new THREE.LineBasicMaterial({ color: INK }));
-  tab.add(tabEdges);
-  host.add(tab);
-}
-
-addTab(pieces[3], { x: 0.14, z: PANEL / 2 }, { x: 0, z: 1 });
-addTab(pieces[3], { x: -PANEL / 2, z: -0.14 }, { x: -1, z: 0 });
-addTab(pieces[0], { x: PANEL / 2, z: 0.1 }, { x: 1, z: 0 });
-addTab(pieces[0], { x: -0.1, z: -PANEL / 2 }, { x: 0, z: -1 });
-
-scene.add(group);
-
-function resize(){
-  const w = mount.clientWidth, h = mount.clientHeight;
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-}
-resize();
-window.addEventListener('resize', resize);
-
-const CYCLE = 6200;
-function ease(t){ return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; }
-
-let start = null;
-function frame(ts){
-  if (start === null) start = ts;
-  const t = ((ts - start) % CYCLE) / CYCLE;
-
-  let sep;
-  if (t < 0.30) sep = 0;
-  else if (t < 0.45) sep = ease((t - 0.30) / 0.15);
-  else if (t < 0.80) sep = 1;
-  else if (t < 0.95) sep = 1 - ease((t - 0.80) / 0.15);
-  else sep = 0;
-
-  pieces.forEach(p => {
-    const [dx, dz] = p.userData.dir;
-    p.position.x = p.userData.homeX + dx * 0.42 * sep;
-    p.position.z = p.userData.homeZ + dz * 0.42 * sep;
-    p.position.y = 0.13 * sep;
-  });
-
-  group.rotation.x = 0.18 + 0.05 * Math.sin(ts * 0.0004);
-  if (!prefersReduced) group.rotation.y += 0.0032;
-
-  renderer.render(scene, camera);
-  requestAnimationFrame(frame);
-}
-requestAnimationFrame(frame);
-</script>
-
 </body></html>
