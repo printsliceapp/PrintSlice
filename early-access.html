@@ -5,6 +5,13 @@
 <title>Early Access — PrintSlice</title>
 <link rel="icon" href="/logo-icon.png" type="image/png">
 
+<!-- Reddit Pixel -->
+<script>
+!function(w,d){if(!w.rdt){var p=w.rdt=function(){p.sendEvent?p.sendEvent.apply(p,arguments):p.callQueue.push(arguments)};p.callQueue=[];var t=d.createElement("script");t.src="https://www.redditstatic.com/ads/pixel.js?pixel_id=a2_jiqqzulvlm5y",t.async=!0;var s=d.getElementsByTagName("script")[0];s.parentNode.insertBefore(t,s)}}(window,document);rdt('init','a2_jiqqzulvlm5y');rdt('track', 'PageVisit');
+</script>
+<!-- DO NOT MODIFY UNLESS TO REPLACE A USER IDENTIFIER -->
+<!-- End Reddit Pixel -->
+
 <style>
   :root{
     --accent:#124559; --accent-hover:#0d3546; --accent-soft:rgba(18,69,89,.14);
@@ -147,6 +154,10 @@ form.addEventListener('submit', async (e) => {
       body: encode(formData),
     });
     if (!res.ok) throw new Error('Submission failed');
+    // Fired right here, not on page load — this is the actual conversion
+    // moment (a real request submitted), which is what the Reddit ad
+    // campaign's Conversions objective needs to optimize against.
+    rdt('track', 'Lead');
     // Approval is manual, so there's nothing to unlock yet — but the person
     // reviewing requests can only grant access to an EXISTING account, and
     // chasing people by email to go sign up first was the actual bottleneck.
