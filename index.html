@@ -52,9 +52,15 @@
     padding:18px 28px; background:rgba(244,240,230,.9); backdrop-filter:blur(10px);
     border-bottom:1.5px solid var(--ink);
   }
+  .brand-group{ display:flex; align-items:center; }
   .brand{ display:flex; align-items:center; gap:10px; color:var(--ink); }
   .brand-icon{ width:26px; height:26px; flex:none; display:flex; align-items:center; justify-content:center; }
   .brand-name{ font-family:var(--mono); font-weight:700; font-size:13px; letter-spacing:.1em; text-transform:uppercase; }
+  .brand-tagline{
+    font-family:var(--mono); font-size:11px; color:var(--ink-faint); letter-spacing:.01em;
+    margin-left:16px; padding-left:16px; border-left:1px solid var(--line-strong);
+  }
+  @media (max-width: 1080px){ .brand-tagline{ display:none; } }
   .nav-links{ display:flex; align-items:center; gap:30px; font-family:var(--mono); font-size:12px; }
   .nav-links a.nlink{ color:var(--ink-soft); font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
   .nav-links a.nlink:hover{ color:var(--accent); }
@@ -198,10 +204,13 @@
 <body>
 
 <header>
-  <a class="brand" href="/">
-    <div class="brand-icon"><img src="/logo-icon.png" alt="PrintSlice logo" width="22" height="22"></div>
-    <span class="brand-name">PrintSlice</span>
-  </a>
+  <div class="brand-group">
+    <a class="brand" href="/">
+      <div class="brand-icon"><img src="/logo-icon.png" alt="PrintSlice logo" width="22" height="22"></div>
+      <span class="brand-name">PrintSlice</span>
+    </a>
+    <span class="brand-tagline">Split big STL models into bed-sized, snap-fit pieces</span>
+  </div>
   <nav class="nav-links">
     <a class="nlink" href="#features">Features</a>
     <a class="nlink" href="#how-it-works">How It Works</a>
