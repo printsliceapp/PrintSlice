@@ -5050,8 +5050,7 @@ function loadMesh(triangles){
     "Triangles: " + triangles.length.toLocaleString() + "<br>" +
     "Size (X x Y x Z): " + size[0].toFixed(1) + " x " + size[1].toFixed(1) + " x " + size[2].toFixed(1) + " mm<br>" +
     "Footprint fits bed: " + (fitsXY ? '<span class="ok">yes</span>' : '<span class="warn">no — splitting needed</span>') + "<br>" +
-    "Height fits bed Z: " + (fitsZ ? '<span class="ok">yes</span>' : '<span class="warn">no — splitting needed</span>') +
-    (sourceWt.watertight ? "" : "<br><span class=\"warn\">Heads up: this file has " + sourceWt.openEdges + " overlapping or unclosed edge(s) in its surface — likely left over from how it was originally created (common with AI-generated or procedurally-generated models). Splitting and connectors may still work, but if export gets blocked later, it's this, not a connector setting. Repairing the mesh first in a tool like Blender (Merge by Distance + Recalculate Normals) or Netfabb usually clears it.</span>");
+    "Height fits bed Z: " + (fitsZ ? '<span class="ok">yes</span>' : '<span class="warn">no — splitting needed</span>');
 
   statusEl.textContent = (fitsXY && fitsZ) ? "This model already fits the bed. You can still press Split (it will produce a single piece)." : "Press \"Split into bed-sized pieces\" to generate a grid of pieces that fit your bed.";
   splitBtn.disabled = false;
@@ -6131,8 +6130,7 @@ function renderPieces(result, bedX, bedY, bedZ){
     row.innerHTML =
       '<div class="title"><span class="swatch" style="background:#' + color.getHexString() + '"></span>Part ' + (i+1) + ' — ' + name + '</div>' +
       'Size: ' + size[0].toFixed(1) + ' x ' + size[1].toFixed(1) + ' x ' + size[2].toFixed(1) + ' mm &middot; ' +
-      (fits ? '<span class="ok">fits bed</span>' : '<span class="bad">too big</span>') + '<br>' +
-      'Watertight: ' + (wt.watertight ? '<span class="ok">yes</span>' : '<span class="warn">' + wt.openEdges + ' open edge(s)</span>');
+      (fits ? '<span class="ok">fits bed</span>' : '<span class="bad">too big</span>');
     row.appendChild(buildPieceOptionsMenu(piece, i));
     piecesListEl.appendChild(row);
 
@@ -6156,7 +6154,6 @@ function renderPieces(result, bedX, bedY, bedZ){
     "Grid: " + result.nx + " x " + result.ny + " x " + result.nz + " = " + computedPieces.length + " piece(s)<br>" +
     jointLine +
     "Volume check: " + pct.toFixed(2) + "% of original volume recovered<br>" +
-    "All pieces watertight: " + (allWatertight ? '<span class="ok">yes</span>' : '<span class="warn">no — check warnings above</span>') + "<br>" +
     (anyOversize ? '<span class="bad">Some pieces exceed the bed — check margin/bed size.</span>' : '<span class="ok">All pieces fit the bed.</span>') +
     "<br><span style='color:var(--ink-faint)'>Pieces keep the model's original coordinates so they line up if reassembled; reorient/lay flat as needed in your slicer.</span>";
 
