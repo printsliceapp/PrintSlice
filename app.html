@@ -4896,10 +4896,31 @@ function updateBedHelper(bedX, bedY, center){
   grid.rotation.x = Math.PI/2;
   grid.position.set(center[0], center[1], 0);
   bedHelper.add(grid);
-  const edges = new THREE.EdgesGeometry(new THREE.PlaneGeometry(bedX, bedY));
-  const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color:0x124559 }));
-  line.position.set(center[0], center[1], 0);
-  bedHelper.add(line);
+  // A plain THREE.Line's width is capped at 1px on most GPUs regardless of
+  // the material's linewidth setting (a long-standing WebGL/ANGLE
+  // limitation, not a bug in this code) — confirmed by direct testing, the
+  // bed boundary was barely visible against the dark viewport at a normal
+  // zoom level despite being drawn in the accent color. Building the frame
+  // out of thin flat boxes instead gives it real, camera-independent pixel
+  // width, so the bed edge actually reads as a boundary rather than a
+  // near-invisible hairline — exactly what makes an oversized model's
+  // overhang obvious at a glance.
+  const frameColor = 0x3ecf8e;
+  const frameW = Math.max(bedX, bedY) * 0.006 + 0.6; // scales a little with bed size, never vanishingly thin
+  const frameMat = new THREE.MeshBasicMaterial({ color: frameColor, transparent:true, opacity:0.95, depthTest:false });
+  const half = { x: bedX/2, y: bedY/2 };
+  const bars = [
+    { w: bedX + frameW, h: frameW, x: 0, y:  half.y }, // top
+    { w: bedX + frameW, h: frameW, x: 0, y: -half.y }, // bottom
+    { w: frameW, h: bedY + frameW, x:  half.x, y: 0 }, // right
+    { w: frameW, h: bedY + frameW, x: -half.x, y: 0 }, // left
+  ];
+  for (const b of bars){
+    const bar = new THREE.Mesh(new THREE.PlaneGeometry(b.w, b.h), frameMat);
+    bar.position.set(center[0] + b.x, center[1] + b.y, 0.05);
+    bar.renderOrder = 5;
+    bedHelper.add(bar);
+  }
   scene.add(bedHelper);
 }
 
