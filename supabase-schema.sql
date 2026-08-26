@@ -60,19 +60,53 @@ create policy "Signed-in users can report an error"
 -- signing up and actually getting to use a "free trial" tool — this makes
 -- it instant. SECURITY DEFINER is required because this needs to write to
 -- public.subscriptions, which RLS otherwise locks to the webhook alone.
--- "on conflict do nothing" leaves an existing row untouched (e.g. if
--- something else already wrote one), and the Stripe webhook's own upsert
--- later overwrites this trial row once someone actually subscribes.
+
+-- Permanent record of which (normalized) emails have ever claimed a trial —
+-- kept even if the account behind it is later deleted, so someone can't
+-- just delete-and-resignup with the same email for another free week.
+-- This can't stop someone using an entirely different real email address
+-- (nothing short of requiring a card can), but it closes the easy/obvious
+-- loophole of Gmail's dot and "+tag" tricks (you@gmail.com,
+-- you+trial2@gmail.com and y.o.u@gmail.com all land in the same inbox).
+create table if not exists public.trial_grants (
+  email_normalized text primary key,
+  first_user_id uuid references auth.users(id) on delete set null,
+  granted_at timestamptz not null default now()
+);
+
+-- Row Level Security with no policies at all = fully locked from the
+-- client API in every direction — only the SECURITY DEFINER function
+-- below (and the Supabase dashboard) can ever touch this table.
+alter table public.trial_grants enable row level security;
+
 create or replace function public.grant_signup_trial()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  norm_email text;
 begin
-  insert into public.subscriptions (user_id, status, current_period_end)
-  values (new.id, 'trialing', now() + interval '7 days')
-  on conflict (user_id) do nothing;
+  norm_email := lower(new.email);
+  if norm_email like '%@gmail.com' then
+    norm_email := replace(split_part(split_part(norm_email, '@', 1), '+', 1), '.', '') || '@gmail.com';
+  end if;
+
+  -- Try to claim this normalized email. If it's already been claimed,
+  -- this silently does nothing and FOUND ends up false below — meaning
+  -- an equivalent email already got its one trial, so this account
+  -- stays on the 'inactive' default instead of getting another.
+  insert into public.trial_grants (email_normalized, first_user_id)
+  values (norm_email, new.id)
+  on conflict (email_normalized) do nothing;
+
+  if found then
+    insert into public.subscriptions (user_id, status, current_period_end)
+    values (new.id, 'trialing', now() + interval '7 days')
+    on conflict (user_id) do nothing;
+  end if;
+
   return new;
 end;
 $$;
