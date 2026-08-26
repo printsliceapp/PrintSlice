@@ -609,11 +609,17 @@ authSubmitBtn.addEventListener("click", async () => {
   authMsg.textContent = ""; authMsg.className = "auth-msg";
   try {
     if (authMode === "signup"){
-      const { error } = await sb.auth.signUp({ email, password });
+      const { data, error } = await sb.auth.signUp({ email, password });
       if (error) throw error;
-      authMsg.textContent = "Check your email to confirm your account, then log in.";
-      authMsg.className = "auth-msg ok";
-      setAuthMode("login");
+      if (data.session){
+        // Email confirmation is off, so signUp already returned a live
+        // session — go straight in instead of making them log in again.
+        await refreshGate();
+      } else {
+        authMsg.textContent = "Check your email to confirm your account, then log in.";
+        authMsg.className = "auth-msg ok";
+        setAuthMode("login");
+      }
     } else {
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
