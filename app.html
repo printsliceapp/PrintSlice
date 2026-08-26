@@ -597,7 +597,9 @@ function setAuthMode(mode){
   }
   document.getElementById("authSwitchLink").addEventListener("click", () => setAuthMode(mode === "signup" ? "login" : "signup"));
 }
-setAuthMode("login");
+// A "?signup=1" link (e.g. from the early-access page's "Start your free
+// trial" button) should land straight on the sign-up form, not login.
+setAuthMode(new URLSearchParams(window.location.search).get("signup") === "1" ? "signup" : "login");
 
 authSubmitBtn.addEventListener("click", async () => {
   const email = authEmail.value.trim();

@@ -53,3 +53,31 @@ alter table public.client_errors enable row level security;
 create policy "Signed-in users can report an error"
   on public.client_errors for insert
   with check (auth.uid() = user_id);
+
+-- Auto-grant every new signup a 7-day trial, instead of leaving them on
+-- 'inactive' until someone manually reviews and runs a one-off SQL grant.
+-- That manual gate was adding a multi-step, human-in-the-loop delay between
+-- signing up and actually getting to use a "free trial" tool — this makes
+-- it instant. SECURITY DEFINER is required because this needs to write to
+-- public.subscriptions, which RLS otherwise locks to the webhook alone.
+-- "on conflict do nothing" leaves an existing row untouched (e.g. if
+-- something else already wrote one), and the Stripe webhook's own upsert
+-- later overwrites this trial row once someone actually subscribes.
+create or replace function public.grant_signup_trial()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.subscriptions (user_id, status, current_period_end)
+  values (new.id, 'trialing', now() + interval '7 days')
+  on conflict (user_id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created_grant_trial on auth.users;
+create trigger on_auth_user_created_grant_trial
+  after insert on auth.users
+  for each row execute function public.grant_signup_trial();

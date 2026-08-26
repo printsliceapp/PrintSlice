@@ -100,10 +100,9 @@
     </div>
   </div>
 
-  <div class="eyebrow-pill"><span class="dot"></span>Early access</div>
-  <h1>Get 7-day early access</h1>
-  <p class="lede">Try PrintSlice free for a week before the wider paid launch. Enter your email below and we'll get you set up.</p>
-  <p class="fine">No payment info needed. We personally review every request — most people get access within a few hours.</p>
+  <div class="eyebrow-pill"><span class="dot"></span>Free 7-day trial</div>
+  <h1>Start your free trial</h1>
+  <p class="lede">No card needed. Click below, create an account, and you're straight into the tool — full access for 7 days.</p>
 
   <div class="card">
     <ul class="perks">
@@ -112,16 +111,7 @@
       <li>First to know when new features ship</li>
     </ul>
 
-    <form id="earlyAccessForm" name="early-access" method="POST" data-netlify="true" netlify-honeypot="bot-field">
-      <input type="hidden" name="form-name" value="early-access">
-      <p style="display:none;"><label>Don't fill this out if you're human: <input name="bot-field"></label></p>
-
-      <label for="eaEmail">Email</label>
-      <input type="email" id="eaEmail" name="email" required="" placeholder="you@example.com">
-
-      <button type="submit" id="earlyAccessSubmit">Request early access</button>
-      <div class="status-msg" id="earlyAccessStatus"></div>
-    </form>
+    <button type="button" id="startTrialBtn">Start your free trial</button>
   </div>
 
   <footer>
@@ -130,64 +120,16 @@
 </div>
 
 <script>
-// Same Netlify Forms + fetch pattern as contact.html — no backend needed,
-// submissions land in the Netlify dashboard under the "early-access" form
-// for manual review (see contact.html for the identical approach).
-const form = document.getElementById('earlyAccessForm');
-const statusEl = document.getElementById('earlyAccessStatus');
-const submitBtn = document.getElementById('earlyAccessSubmit');
-
-function encode(data){
-  return Object.keys(data).map(k => encodeURIComponent(k) + "=" + encodeURIComponent(data[k])).join("&");
-}
-
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  submitBtn.disabled = true;
-  statusEl.textContent = '';
-  statusEl.className = 'status-msg';
-  const formData = Object.fromEntries(new FormData(form).entries());
-  try {
-    const res = await fetch('/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: encode(formData),
-    });
-    if (!res.ok) throw new Error('Submission failed');
-    // Fired right here, not on page load — this is the actual conversion
-    // moment (a real request submitted), which is what the Reddit ad
-    // campaign's Conversions objective needs to optimize against.
-    rdt('track', 'Lead');
-    // Approval is manual, so there's nothing to unlock yet — but the person
-    // reviewing requests can only grant access to an EXISTING account, and
-    // chasing people by email to go sign up first was the actual bottleneck.
-    // Sending them to create an account right now, while they're already
-    // here, removes that whole back-and-forth. app.html sends them right
-    // back here (see its own "next" handling) once they're signed in.
-    statusEl.textContent = "You're on the list! Taking you to create an account — that's what lets us switch your access on.";
-    statusEl.className = 'status-msg ok';
-    form.reset();
-    setTimeout(() => {
-      window.location.href = '/app.html?next=' + encodeURIComponent('/early-access.html?joined=1');
-    }, 1800);
-  } catch (err) {
-    statusEl.textContent = "Something went wrong sending that — try emailing printsliceapp@gmail.com instead.";
-    statusEl.className = 'status-msg err';
-  } finally {
-    submitBtn.disabled = false;
-  }
+// Instant, self-serve trial — no email-capture/review step first. The
+// account itself is created on app.html; a Supabase trigger auto-grants
+// it a 7-day trial the moment it's created (see supabase-schema.sql), so
+// there's nothing left to gate here.
+document.getElementById('startTrialBtn').addEventListener('click', () => {
+  // This click is the real conversion moment for the Reddit ad campaign
+  // now that there's no separate form-submit step to fire it from.
+  rdt('track', 'Lead');
+  window.location.href = '/app.html?signup=1';
 });
-
-// Landed back here right after creating an account (see app.html's "next"
-// handling) — swap the form out for a confirmation instead of just showing
-// the same empty form again, which would look like nothing happened.
-if (new URLSearchParams(window.location.search).get('joined') === '1'){
-  document.querySelector('.card').innerHTML =
-    '<p style="margin:0; font-size:15px; color:var(--ink); line-height:1.6;">' +
-    '<b>Account created — you\'re all set.</b><br><br>' +
-    'We personally review every request — you\'ll get an email at the address you signed up with once your access is switched on, usually within a few hours.' +
-    '</p>';
-}
 </script>
 
 
