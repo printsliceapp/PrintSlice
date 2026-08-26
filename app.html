@@ -312,6 +312,16 @@
 
 </head>
 <body>
+<!-- Never shown or submitted by a real user — exists purely so Netlify's
+     build-time form detection registers "signup-notify", which lets you
+     turn on a Netlify notification (email/Slack/app push) for it. The
+     actual submission is fired from JS right after a real signup, as a
+     fire-and-forget ping, now that signup itself no longer goes through
+     Netlify Forms (see the sign-up handler below). -->
+<form name="signup-notify" data-netlify="true" hidden>
+  <input type="email" name="email">
+</form>
+
 <div id="authGate">
   <div class="auth-card" id="authCardLoading">
     <div class="auth-loading">Loading…</div>
@@ -614,6 +624,15 @@ authSubmitBtn.addEventListener("click", async () => {
       const { data, error } = await sb.auth.signUp({ email, password });
       if (error) throw error;
       if (data.session){
+        // Fire-and-forget: let the previous "phone notification on signup"
+        // keep working even though real signup no longer goes through
+        // Netlify Forms. Never awaited/blocking — a failure here must
+        // never stop someone from actually getting into the app.
+        fetch("/", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: "form-name=signup-notify&email=" + encodeURIComponent(email),
+        }).catch(() => {});
         // Email confirmation is off, so signUp already returned a live
         // session — go straight in instead of making them log in again.
         await refreshGate();
