@@ -125,9 +125,11 @@
 // it a 7-day trial the moment it's created (see supabase-schema.sql), so
 // there's nothing left to gate here.
 document.getElementById('startTrialBtn').addEventListener('click', () => {
-  // This click is the real conversion moment for the Reddit ad campaign
-  // now that there's no separate form-submit step to fire it from.
-  rdt('track', 'Lead');
+  // The 'Lead' event now fires on app.html once someone actually finishes
+  // signing up — not here, since this is just a click, not a completed
+  // account. Firing it here too would double-count anyone who clicks this
+  // AND finishes signing up, and would also miss real signups that arrive
+  // at app.html some other way (e.g. the homepage's own signup buttons).
   window.location.href = '/app.html?signup=1';
 });
 </script>

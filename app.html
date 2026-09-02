@@ -5,6 +5,17 @@
 <title>STL Bed Splitter</title>
 <link rel="icon" href="/logo-icon.png" type="image/png">
 
+<!-- Reddit Pixel — installed here (not just early-access.html) so the Lead
+     event fires on an actual completed signup, regardless of which page
+     someone arrived from (homepage buttons link straight here now, not
+     through early-access.html). No 'PageVisit' track call on this page —
+     that's still early-access.html's job as the landing page; this pixel
+     instance exists purely to record the real conversion. -->
+<script>
+!function(w,d){if(!w.rdt){var p=w.rdt=function(){p.sendEvent?p.sendEvent.apply(p,arguments):p.callQueue.push(arguments)};p.callQueue=[];var t=d.createElement("script");t.src="https://www.redditstatic.com/ads/pixel.js?pixel_id=a2_jiqqzulvlm5y",t.async=!0;var s=d.getElementsByTagName("script")[0];s.parentNode.insertBefore(t,s)}}(window,document);rdt('init','a2_jiqqzulvlm5y');
+</script>
+<!-- End Reddit Pixel -->
+
 <style>
   :root{
     --accent:#124559; --accent-hover:#0d3546; --accent-soft:rgba(18,69,89,.14); --accent-ink:#eff6e0;
@@ -633,6 +644,12 @@ authSubmitBtn.addEventListener("click", async () => {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: "form-name=signup-notify&email=" + encodeURIComponent(email),
         }).catch(() => {});
+        // The real conversion moment for the Reddit ad campaign — fired
+        // here (an actual completed account) instead of on the early-access
+        // page's button click, so it counts every signup regardless of
+        // which page someone entered through, not just the ones who went
+        // via early-access.html specifically.
+        if (typeof rdt === "function") rdt("track", "Lead");
         // Email confirmation is off, so signUp already returned a live
         // session — go straight in instead of making them log in again.
         await refreshGate();
