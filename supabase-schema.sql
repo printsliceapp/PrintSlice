@@ -115,3 +115,20 @@ drop trigger if exists on_auth_user_created_grant_trial on auth.users;
 create trigger on_auth_user_created_grant_trial
   after insert on auth.users
   for each row execute function public.grant_signup_trial();
+
+-- ============================================================
+-- DEPRECATED as of the switch to card-upfront trials.
+-- ============================================================
+-- The trigger above granted a free week with NO card on file — that's now
+-- handled by Stripe Checkout's own trial_period_days instead (card is
+-- collected at signup; Stripe auto-charges when the trial ends; see
+-- create-checkout-session.js and stripe-webhook.js). Leaving this trigger
+-- active would completely undermine that: anyone could just close the
+-- Checkout tab and still walk away with a full no-card trial via this
+-- trigger, same as before. Run this once to turn it off:
+--
+--   drop trigger if exists on_auth_user_created_grant_trial on auth.users;
+--
+-- The trial_grants table and its function are left in place (harmless,
+-- unused once the trigger's gone) rather than deleted, in case this is
+-- ever reverted — dropping only the trigger is what actually matters.

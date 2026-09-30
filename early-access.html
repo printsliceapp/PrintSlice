@@ -102,7 +102,7 @@
 
   <div class="eyebrow-pill"><span class="dot"></span>Free 7-day trial</div>
   <h1>Start your free trial</h1>
-  <p class="lede">No card needed. Click below, create an account, and you're straight into the tool — full access for 7 days.</p>
+  <p class="lede">Card required, but you won't be charged until your 7 days are up — cancel anytime before then and you pay nothing.</p>
 
   <div class="card">
     <ul class="perks">
@@ -121,9 +121,11 @@
 
 <script>
 // Instant, self-serve trial — no email-capture/review step first. The
-// account itself is created on app.html; a Supabase trigger auto-grants
-// it a 7-day trial the moment it's created (see supabase-schema.sql), so
-// there's nothing left to gate here.
+// account itself is created on app.html, which then sends them straight
+// to Stripe Checkout to add a card; Stripe's own trial_period_days handles
+// the 7 free days and auto-charges when it ends (see
+// create-checkout-session.js and stripe-webhook.js) — there's nothing to
+// gate here on this page.
 document.getElementById('startTrialBtn').addEventListener('click', () => {
   // The 'Lead' event now fires on app.html once someone actually finishes
   // signing up — not here, since this is just a click, not a completed

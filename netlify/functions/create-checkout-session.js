@@ -37,6 +37,12 @@ exports.handler = async (event) => {
   const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
   const siteUrl = process.env.URL || process.env.DEPLOY_PRIME_URL || 'http://localhost:8888';
 
+  let withTrial = false;
+  try {
+    const body = JSON.parse(event.body || '{}');
+    withTrial = body.withTrial === true;
+  } catch { /* no body / not JSON — treat as a plain (no-trial) checkout */ }
+
   try {
     // Reuse an existing Stripe customer for this user if one is already on
     // file, instead of creating a new one on every checkout attempt.
@@ -46,16 +52,28 @@ exports.handler = async (event) => {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    // Only a genuinely first-time customer (no Stripe customer on file yet)
+    // can get the trial — otherwise anyone could cancel and re-checkout
+    // their way into repeated free weeks. This is the ONLY place a trial
+    // gets granted now: card is collected up front via Checkout, and Stripe
+    // itself auto-charges when trial_period_days runs out (see the webhook,
+    // which just mirrors whatever status Stripe reports — it doesn't need
+    // to know anything special about trials).
+    const grantTrial = withTrial && !existing?.stripe_customer_id;
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
       client_reference_id: user.id,
       customer: existing?.stripe_customer_id || undefined,
       customer_email: existing?.stripe_customer_id ? undefined : user.email,
-      success_url: `${siteUrl}/?checkout=success`,
-      cancel_url: `${siteUrl}/?checkout=cancelled`,
+      success_url: `${siteUrl}/app.html?checkout=success`,
+      cancel_url: `${siteUrl}/app.html?checkout=cancelled`,
       metadata: { supabase_user_id: user.id },
-      subscription_data: { metadata: { supabase_user_id: user.id } },
+      subscription_data: {
+        metadata: { supabase_user_id: user.id },
+        ...(grantTrial ? { trial_period_days: 7 } : {}),
+      },
     });
 
     return { statusCode: 200, body: JSON.stringify({ url: session.url }) };

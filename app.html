@@ -650,9 +650,22 @@ authSubmitBtn.addEventListener("click", async () => {
         // which page someone entered through, not just the ones who went
         // via early-access.html specifically.
         if (typeof rdt === "function") rdt("track", "Lead");
-        // Email confirmation is off, so signUp already returned a live
-        // session — go straight in instead of making them log in again.
-        await refreshGate();
+        // Card is collected up front now (Stripe's own trial_period_days
+        // handles the 7 free days and auto-charges when it ends) — so a
+        // fresh signup goes straight to Checkout instead of straight into
+        // the app. If starting Checkout itself fails, fall back to
+        // refreshGate(): with no subscription on file yet they'll land on
+        // the paywall, which has its own "Subscribe" button as a retry
+        // path, rather than being left stuck on a dead signup form.
+        try {
+          const { url } = await callFunction("create-checkout-session", { withTrial: true });
+          window.location.href = url;
+          return; // leaving the page — don't fall through to `finally` re-enabling the button
+        } catch (checkoutErr) {
+          authMsg.textContent = "Account created, but couldn't start checkout — try subscribing from the next screen.";
+          authMsg.className = "auth-msg err";
+          await refreshGate();
+        }
       } else {
         authMsg.textContent = "Check your email to confirm your account, then log in.";
         authMsg.className = "auth-msg ok";
@@ -671,11 +684,15 @@ authSubmitBtn.addEventListener("click", async () => {
   }
 });
 
-async function callFunction(name){
+async function callFunction(name, body){
   const { data: { session } } = await sb.auth.getSession();
   const res = await fetch(`/.netlify/functions/${name}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${session?.access_token || ""}` },
+    headers: {
+      Authorization: `Bearer ${session?.access_token || ""}`,
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
   if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || "Request failed.");
   return res.json();
@@ -687,7 +704,12 @@ document.getElementById("subscribeBtn").addEventListener("click", async (e) => {
   const msg = document.getElementById("paywallMsg");
   msg.textContent = ""; msg.className = "auth-msg";
   try {
-    const { url } = await callFunction("create-checkout-session");
+    // withTrial here too (not just at signup) so someone who backed out of
+    // entering a card the first time still gets their 7 days when they come
+    // back through the paywall — create-checkout-session itself is what
+    // actually enforces "only once ever" via the existing Stripe customer
+    // check, not this flag.
+    const { url } = await callFunction("create-checkout-session", { withTrial: true });
     window.location.href = url;
   } catch (err) {
     msg.textContent = err.message; msg.className = "auth-msg err";
