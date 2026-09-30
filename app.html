@@ -352,16 +352,6 @@
     <button class="btn-primary" id="authSubmitBtn">Log in</button>
     <div class="auth-msg" id="authMsg"></div>
 
-    <div style="display:flex; align-items:center; gap:10px; margin:16px 0; color:var(--ink-faint); font-size:12px;">
-      <div style="flex:1; height:1px; background:var(--line);"></div>
-      or
-      <div style="flex:1; height:1px; background:var(--line);"></div>
-    </div>
-    <button class="btn-secondary" id="googleAuthBtn" style="display:flex; align-items:center; justify-content:center; gap:8px;">
-      <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.5 0 24 0 14.6 0 6.4 5.4 2.5 13.2l7.9 6.1C12.3 13 17.6 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.5 3-2.2 5.5-4.7 7.2l7.4 5.7c4.3-4 6.8-9.9 6.8-17.4z"/><path fill="#FBBC05" d="M10.4 19.3a14.5 14.5 0 0 0 0 9.4l-7.9 6.1a24 24 0 0 1 0-21.6l7.9 6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.2-8.5 2.2-6.4 0-11.7-3.5-13.6-9.3l-7.9 6.1C6.4 42.6 14.6 48 24 48z"/></svg>
-      Continue with Google
-    </button>
-
     <div class="auth-switch" id="authSwitch">Don't have an account? <a id="authSwitchLink">Sign up</a></div>
     <div style="text-align:center; margin-top:14px; font-size:11.5px;">
       <a href="/help.html" style="color:var(--ink-faint);">Help</a>
@@ -632,28 +622,6 @@ function setAuthMode(mode){
 // A "?signup=1" link (e.g. from the early-access page's "Start your free
 // trial" button) should land straight on the sign-up form, not login.
 setAuthMode(new URLSearchParams(window.location.search).get("signup") === "1" ? "signup" : "login");
-
-// Google sign-in/sign-up is the same call either way — Supabase creates the
-// account automatically the first time a given Google account shows up.
-// There's no email/password step to hook a "go straight to Checkout" redirect
-// onto here (unlike the form above), so a brand-new Google user lands on the
-// paywall via the normal refreshGate() flow instead — its Subscribe button
-// already passes withTrial:true, so they still get the same 7-day trial,
-// just with one extra click rather than landing in Checkout immediately.
-document.getElementById("googleAuthBtn").addEventListener("click", async () => {
-  const msg = authMsg;
-  msg.textContent = ""; msg.className = "auth-msg";
-  const { error } = await sb.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: window.location.origin + "/app.html" },
-  });
-  if (error){
-    msg.textContent = error.message || "Couldn't start Google sign-in.";
-    msg.className = "auth-msg err";
-  }
-  // On success there's nothing else to do here — signInWithOAuth navigates
-  // the whole page away to Google immediately.
-});
 
 authSubmitBtn.addEventListener("click", async () => {
   const email = authEmail.value.trim();
