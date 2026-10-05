@@ -305,6 +305,9 @@
     font-family:inherit;
   }
   .auth-card input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  #authAgeRow{ display:flex; align-items:flex-start; gap:8px; margin:0 0 14px; font-size:12.5px; line-height:1.5; color:var(--ink-soft); cursor:pointer; text-transform:none; letter-spacing:0; font-weight:400; }
+  #authAgeRow[hidden]{ display:none; }
+  #authAgeRow input{ margin-top:3px; flex:none; }
   .auth-msg{ font-size:12.5px; margin:9px 0 0; min-height:16px; }
   .auth-msg.err{ color:var(--bad); }
   .auth-msg.ok{ color:var(--ok); }
@@ -349,6 +352,10 @@
     <p class="sub" id="authFormSub">Welcome back — log in to your account.</p>
     <input type="email" id="authEmail" placeholder="Email" autocomplete="email">
     <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
+    <label id="authAgeRow" hidden>
+      <input type="checkbox" id="authAgeConfirm">
+      <span>I'm 18 or over, and I agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span>
+    </label>
     <button class="btn-primary" id="authSubmitBtn">Log in</button>
     <div class="auth-msg" id="authMsg"></div>
 
@@ -606,6 +613,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 function setAuthMode(mode){
   authMode = mode;
   authMsg.textContent = "";
+  document.getElementById("authAgeRow").hidden = (mode !== "signup");
   if (mode === "signup"){
     authFormTitle.textContent = "Sign up";
     authFormSub.textContent = "Create an account to get started.";
@@ -629,11 +637,26 @@ authSubmitBtn.addEventListener("click", async () => {
   if (!email || !password){
     authMsg.textContent = "Enter an email and password."; authMsg.className = "auth-msg err"; return;
   }
+  if (authMode === "signup" && !document.getElementById("authAgeConfirm").checked){
+    authMsg.textContent = "Please confirm you're 18 or over and agree to the Terms to sign up."; authMsg.className = "auth-msg err"; return;
+  }
   authSubmitBtn.disabled = true;
   authMsg.textContent = ""; authMsg.className = "auth-msg";
   try {
     if (authMode === "signup"){
-      const { data, error } = await sb.auth.signUp({ email, password });
+      // Stored on the account itself (Supabase's user metadata) so there's
+      // a record of when and what was agreed to, not just a client-side
+      // checkbox that leaves no trace. terms_version is the "last updated"
+      // date of terms.html at the time — bump it when the terms change.
+      const { data, error } = await sb.auth.signUp({
+        email,
+        password,
+        options: { data: {
+          confirmed_18_plus: true,
+          accepted_terms_at: new Date().toISOString(),
+          terms_version: "2026-10-04",
+        } },
+      });
       if (error) throw error;
       if (data.session){
         // Fire-and-forget: let the previous "phone notification on signup"
