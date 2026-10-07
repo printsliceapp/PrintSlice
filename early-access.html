@@ -77,6 +77,18 @@
   .perks{ list-style:none; padding:0; margin:0 0 28px; font-size:14.5px; color:var(--ink-soft); }
   .perks li{ padding:7px 0 7px 24px; position:relative; }
   .perks li::before{ content:"—"; position:absolute; left:0; color:var(--accent-hover); font-weight:800; }
+  .demo{ border:1px solid var(--line-strong); border-radius:var(--radius-lg); overflow:hidden; background:#051820; margin:0 0 22px; box-shadow:0 26px 54px -30px rgba(1,22,30,.35); }
+  .demo video{ display:block; width:100%; height:260px; object-fit:cover; }
+  @media (max-width:480px){ .demo video{ height:200px; } }
+  #startTrialBtn{ padding:16px; font-size:15px; }
+  .how{ list-style:none; counter-reset:how; padding:0; margin:0 0 26px; display:grid; gap:10px; }
+  .how li{ counter-increment:how; display:grid; grid-template-columns:30px 1fr; column-gap:12px; align-items:start;
+    background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); padding:12px 14px; }
+  .how li::before{ content:counter(how); grid-row:span 2; width:26px; height:26px; border-radius:50%; background:var(--ink); color:var(--paper);
+    display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:800; }
+  .how b{ font-size:14.5px; }
+  .how span{ font-size:13px; color:var(--ink-soft); }
+  .small-print{ font-size:12px; color:var(--ink-faint); line-height:1.6; margin:0; text-align:center; }
   footer{ margin-top:48px; text-align:center; font-size:13px; color:var(--ink-faint); }
   footer a{ color:var(--ink-faint); }
 </style>
@@ -100,19 +112,24 @@
     </div>
   </div>
 
-  <div class="eyebrow-pill"><span class="dot"></span>Free 7-day trial</div>
-  <h1>Start your free trial</h1>
-  <p class="lede">No card needed to try it — upload your model and split it for free. When you're ready to download, start a 7-day free trial: a card's needed then, but you won't be charged until day 7, and you pay nothing if you cancel before.</p>
+  <div class="eyebrow-pill"><span class="dot"></span>Free to try — no card</div>
+  <h1>Print models bigger than your bed</h1>
+  <p class="lede">Drop in an STL and PrintSlice cuts it into pieces that fit your printer — with snap-fit joints so they click back together.</p>
 
-  <div class="card">
-    <ul class="perks">
-      <li>Full access to the splitter and connector tool, free for a week</li>
-      <li>Direct line to us for bugs and feedback</li>
-      <li>First to know when new features ship</li>
-    </ul>
+  <button type="button" id="startTrialBtn">Try it free</button>
+  <p class="fine" style="text-align:center; margin:10px 0 22px;">No card to sign up and split your models.</p>
 
-    <button type="button" id="startTrialBtn">Start your free trial</button>
+  <div class="demo">
+    <video src="/hero-3d.mp4" autoplay loop muted playsinline aria-label="PrintSlice splitting a 3D model into bed-sized pieces"></video>
   </div>
+
+  <ol class="how">
+    <li><b>Load your STL</b><span>Or try our sample model if you don't have one handy.</span></li>
+    <li><b>Pick your printer</b><span>We fill in the bed size for you.</span></li>
+    <li><b>Split &amp; download</b><span>Get print-ready pieces, joints included.</span></li>
+  </ol>
+
+  <p class="small-print">Downloading your pieces needs a free 7-day trial: you'll add a card then, but you won't be charged until day 7, and you pay nothing if you cancel before. After that it's £3.99/month, cancel anytime.</p>
 
   <footer>
     <a href="/">← Back to PrintSlice</a>

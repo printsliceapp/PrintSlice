@@ -258,6 +258,37 @@
   }
   #viewer { width:100%; height:100%; display:block; }
 
+  /* Shown over the empty viewport until a model is loaded — the black box
+     on its own gave first-time visitors no clue what to do. */
+  #emptyState{
+    position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center;
+    padding:20px; text-align:center; color:#e8efe0; cursor:pointer;
+  }
+  #emptyState[hidden]{ display:none; }
+  #emptyState .es-box{
+    border:2px dashed rgba(232,239,224,.35); border-radius:var(--radius);
+    padding:28px 26px; max-width:380px; width:100%; transition:border-color .15s, background .15s;
+  }
+  #emptyState:hover .es-box, #emptyState.drag .es-box{ border-color:#3ecf8e; background:rgba(62,207,142,.08); }
+  #emptyState h3{ margin:10px 0 4px; font-size:18px; color:#fff; letter-spacing:0; text-transform:none; }
+  #emptyState p{ margin:0 0 16px; font-size:13.5px; color:rgba(232,239,224,.75); line-height:1.5; }
+  #emptyState .es-or{ font-size:12px; color:rgba(232,239,224,.55); margin:14px 0 8px; }
+  #emptyState #sampleBtn{ width:auto; margin:0; padding:10px 16px; background:#3ecf8e; color:#04241a; }
+  #emptyState #sampleBtn:hover{ background:#5ee0a6; }
+  #emptyState #sampleBtn:disabled{ opacity:.7; cursor:wait; }
+
+  /* Step guide at the top of the sidebar. */
+  #stepGuide{ list-style:none; padding:0; margin:0 0 18px; display:flex; gap:4px; }
+  #stepGuide li{
+    flex:1; text-align:center; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em;
+    padding:7px 2px; border-radius:var(--radius-sm); background:var(--paper-soft); color:var(--ink-faint);
+    border:1px solid var(--line);
+  }
+  #stepGuide li.done{ color:var(--ok); }
+  #stepGuide li.done::before{ content:"✓ "; }
+  #stepGuide li.current{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  #stepHint{ font-size:13px; color:var(--ink); margin:0 0 20px; line-height:1.5; }
+
   #legend {
     position:absolute; top:16px; left:16px; background:rgba(23,21,15,.85);
     backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
@@ -424,7 +455,13 @@
   </div>
   <div id="appBody">
   <div id="sidebar">
-    <div class="sub">Load an STL, enter your printer bed size, and split the model into watertight pieces that each fit on the bed.</div>
+    <ol id="stepGuide" aria-label="Progress">
+      <li data-step="1" class="current">Load</li>
+      <li data-step="2">Printer</li>
+      <li data-step="3">Split</li>
+      <li data-step="4">Download</li>
+    </ol>
+    <p id="stepHint">Start by loading an STL file — or try the sample model.</p>
 
     <section>
       <h2><span class="step-num">1</span>Model</h2>
@@ -456,7 +493,24 @@
     </section>
 
     <section>
-      <h2><span class="step-num">2</span>Printer bed size (mm)</h2>
+      <h2><span class="step-num">2</span>Your printer</h2>
+      <div class="row">
+        <div style="flex-basis:100%;">
+          <label for="printerPreset">Printer</label>
+          <select id="printerPreset">
+            <option value="">Choose your printer…</option>
+            <option value="256,256,256">Bambu Lab A1 / P1S / P1P / X1 Carbon</option>
+            <option value="180,180,180">Bambu Lab A1 mini</option>
+            <option value="250,210,220">Prusa MK4 / MK4S</option>
+            <option value="180,180,180">Prusa MINI+</option>
+            <option value="220,220,250">Creality Ender 3 / V2 / V3 SE</option>
+            <option value="220,220,250">Creality K1 / K1C</option>
+            <option value="225,225,265">Elegoo Neptune 4 / 4 Pro</option>
+            <option value="custom">Other — I'll enter the size myself</option>
+          </select>
+        </div>
+      </div>
+      <div class="hint" style="margin:-2px 0 10px; font-size:12px; color:var(--ink-faint);">Bed size (mm) — filled in from your printer, or type your own.</div>
       <div class="row">
         <div><label>Bed X</label><input id="bedX" type="number" value="220" min="1" step="1"></div>
         <div><label>Bed Y</label><input id="bedY" type="number" value="220" min="1" step="1"></div>
@@ -502,6 +556,18 @@
   <div id="viewerWrap">
     <div id="viewer"></div>
     <div id="legend"></div>
+    <div id="emptyState" role="button" tabindex="0" aria-label="Choose an STL file">
+      <div class="es-box">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 15V4M12 4 8 8M12 4l4 4" stroke="#3ecf8e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="#3ecf8e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        <h3>Drop your STL file here</h3>
+        <p>or click anywhere in this box to choose one</p>
+        <div class="es-or">No file handy?</div>
+        <button type="button" id="sampleBtn">Try a sample model</button>
+      </div>
+    </div>
   </div>
   </div>
 </div>
@@ -5112,20 +5178,35 @@ let addJointMode = false;
 let nextJointNum = 1;
 let pendingSimplifiedTriangles = null; // set while a simplify preview is showing, cleared once accepted/discarded
 
-// Shown once per browser until dismissed (persisted via localStorage) —
-// flags the known connector/export failure mode on very complex/dense
-// models (see simplifyTriangles' fused-feature warning and
-// validateAllJoiningPoints' watertightness check) so affected users
-// aren't left thinking the app is simply broken.
+// Flags the known connector/export failure mode on very complex/dense
+// models so affected users aren't left thinking the app is simply broken.
+// Only shown once something has actually gone wrong (a failed split or an
+// export warning), not up front — as the first thing a new visitor read,
+// "this can fail" was undermining trust before they'd even tried it.
 const knownIssueBanner = document.getElementById("knownIssueBanner");
 const KNOWN_ISSUE_DISMISS_KEY = "printslice_dismissed_complexity_banner_v1";
-if (!localStorage.getItem(KNOWN_ISSUE_DISMISS_KEY)){
+function showKnownIssue(){
+  try { if (localStorage.getItem(KNOWN_ISSUE_DISMISS_KEY)) return; } catch (e) {}
   knownIssueBanner.style.display = "flex";
 }
 document.getElementById("knownIssueBannerClose").addEventListener("click", ()=>{
   knownIssueBanner.style.display = "none";
-  localStorage.setItem(KNOWN_ISSUE_DISMISS_KEY, "1");
+  try { localStorage.setItem(KNOWN_ISSUE_DISMISS_KEY, "1"); } catch (e) {}
 });
+
+// Step guide (Load → Printer → Split → Download) at the top of the sidebar.
+function setStep(n, hint){
+  document.querySelectorAll("#stepGuide li").forEach(li => {
+    const s = Number(li.dataset.step);
+    li.classList.toggle("done", s < n);
+    li.classList.toggle("current", s === n);
+  });
+  if (hint) document.getElementById("stepHint").textContent = hint;
+}
+function stepAfterLoad(){
+  if (document.getElementById("printerPreset").value) setStep(3, "Press \"Split into bed-sized pieces\" below.");
+  else setStep(2, "Now pick your printer below (or type its bed size), then press Split.");
+}
 
 const fileInput = document.getElementById("fileInput");
 const dropzone = document.getElementById("dropzone");
@@ -5170,6 +5251,67 @@ fileInput.addEventListener("change", e=>{
   const f = e.target.files[0];
   if (f) handleFile(f);
 });
+
+// Empty-viewport prompt: same click/drag behaviour as the sidebar dropzone,
+// right where the eye goes first (and above the fold on phones, where the
+// sidebar sits underneath the viewer).
+const emptyState = document.getElementById("emptyState");
+emptyState.addEventListener("click", (e)=>{ if (e.target.id !== "sampleBtn") fileInput.click(); });
+emptyState.addEventListener("keydown", (e)=>{ if ((e.key === "Enter" || e.key === " ") && e.target === emptyState){ e.preventDefault(); fileInput.click(); } });
+["dragenter","dragover"].forEach(evt => emptyState.addEventListener(evt, e=>{ e.preventDefault(); emptyState.classList.add("drag"); }));
+["dragleave","drop"].forEach(evt => emptyState.addEventListener(evt, e=>{ e.preventDefault(); emptyState.classList.remove("drag"); }));
+emptyState.addEventListener("drop", e=>{
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+// One-click sample: a lot of people arriving from an ad don't have an
+// oversized STL to hand, so let them see the whole thing work first.
+const sampleBtn = document.getElementById("sampleBtn");
+sampleBtn.addEventListener("click", async ()=>{
+  sampleBtn.disabled = true;
+  sampleBtn.textContent = "Loading sample…";
+  try {
+    const res = await fetch("/samples/printslice-logo.stl");
+    if (!res.ok) throw new Error("couldn't download the sample");
+    const triangles = parseSTL(await res.arrayBuffer());
+    currentFileBase = "printslice-sample";
+    loadMesh(triangles);
+  } catch (err){
+    statusEl.innerHTML = '<span class="bad">Couldn\'t load the sample model: ' + err.message + '</span>';
+    sampleBtn.disabled = false;
+    sampleBtn.textContent = "Try a sample model";
+  }
+});
+
+// Printer picker: fills in the bed size so nobody has to know their
+// printer's build volume in millimetres. Remembered for next time. Typing a
+// size by hand switches it to "Other".
+const printerPreset = document.getElementById("printerPreset");
+const PRINTER_KEY = "printslice_printer_v1";
+function applyPrinterPreset(){
+  const v = printerPreset.value;
+  if (!v || v === "custom") return;
+  const [x, y, z] = v.split(",");
+  bedXInput.value = x; bedYInput.value = y; bedZInput.value = z;
+  bedXInput.dispatchEvent(new Event("change"));
+}
+printerPreset.addEventListener("change", ()=>{
+  applyPrinterPreset();
+  try { localStorage.setItem(PRINTER_KEY, printerPreset.selectedIndex); } catch (e) {}
+  if (currentTriangles && !lastSplitResult) setStep(3, "Press \"Split into bed-sized pieces\" below.");
+});
+[bedXInput, bedYInput, bedZInput].forEach(inp => inp.addEventListener("input", ()=>{
+  printerPreset.value = "custom";
+  try { localStorage.setItem(PRINTER_KEY, printerPreset.selectedIndex); } catch (e) {}
+}));
+try {
+  const saved = Number(localStorage.getItem(PRINTER_KEY));
+  if (saved > 0 && saved < printerPreset.options.length){
+    printerPreset.selectedIndex = saved;
+    applyPrinterPreset();
+  }
+} catch (e) {}
 
 function handleFile(file){
   currentFileBase = file.name.replace(/\.stl$/i, "") || "model";
@@ -5238,6 +5380,11 @@ function loadMesh(triangles){
 
   statusEl.textContent = (fitsXY && fitsZ) ? "This model already fits the bed. You can still press Split (it will produce a single piece)." : "Press \"Split into bed-sized pieces\" to generate a grid of pieces that fit your bed.";
   splitBtn.disabled = false;
+
+  emptyState.hidden = true;
+  sampleBtn.disabled = false;
+  sampleBtn.textContent = "Try a sample model";
+  stepAfterLoad();
 
   updateSimplifyOffer(triangles.length);
 }
@@ -5382,8 +5529,12 @@ splitBtn.addEventListener("click", ()=>{
       await recomputeJoinedPieces().catch(()=>{});
       renderPieces(result, bedX, bedY, bedZ);
       addJointBtn.disabled = result.pieces.length < 2;
+      setStep(4, result.pieces.length > 1
+        ? "Done! Download your pieces below — or use a piece's \"Preview & Add Joining Point\" to add snap-fit connectors first."
+        : "Done! It fits in one piece — download it below.");
     } catch(err){
       statusEl.innerHTML = '<span class="bad">Split failed: ' + err.message + '</span>';
+      showKnownIssue();
     }
     splitBtn.disabled = false;
   }, 10);
@@ -6496,6 +6647,7 @@ function validateAllJoiningPoints(pieceKeys){
 // means a user is never stuck with literally nothing to show for a split,
 // only a clear heads-up about which part(s) to double-check before printing.
 function showExportValidationWarning(errors){
+  showKnownIssue();
   const text = "Exported, but with a possible defect:\n\n" + errors.join("\n");
   showJointMsg(errors[0] + (errors.length>1 ? " (+" + (errors.length-1) + " more — see console)" : "") + " — exporting anyway; check this part in your slicer before printing.", true);
   console.error(text);

@@ -56,8 +56,8 @@
       'so we can fix what\'s confusing. Anything you type is hidden. ' +
       '<a href="/privacy.html" style="color:#0d3546;text-decoration:underline">Privacy policy</a></p>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-      '<button type="button" data-c="granted" style="cursor:pointer;border:none;border-radius:3px;padding:9px 16px;font-weight:700;font-size:12.5px;font-family:inherit;background:#01161e;color:#f8fbf0">Accept</button>' +
-      '<button type="button" data-c="denied" style="cursor:pointer;border:1px solid rgba(1,22,30,.24);border-radius:3px;padding:9px 16px;font-weight:700;font-size:12.5px;font-family:inherit;background:transparent;color:#01161e">Decline</button>' +
+      '<button type="button" data-c="granted" style="cursor:pointer;border:none;border-radius:3px;padding:9px 16px;font-weight:700;font-size:12.5px;font-family:inherit;width:auto;margin:0;text-transform:none;letter-spacing:0;background:#01161e;color:#f8fbf0">Accept</button>' +
+      '<button type="button" data-c="denied" style="cursor:pointer;border:1px solid rgba(1,22,30,.24);border-radius:3px;padding:9px 16px;font-weight:700;font-size:12.5px;font-family:inherit;width:auto;margin:0;text-transform:none;letter-spacing:0;background:transparent;color:#01161e">Decline</button>' +
       '</div>';
     bar.addEventListener("click", function(e){
       var c = e.target && e.target.getAttribute("data-c");
