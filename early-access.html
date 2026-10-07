@@ -102,7 +102,7 @@
 
   <div class="eyebrow-pill"><span class="dot"></span>Free 7-day trial</div>
   <h1>Start your free trial</h1>
-  <p class="lede">Card required, but you won't be charged until your 7 days are up — cancel anytime before then and you pay nothing.</p>
+  <p class="lede">No card needed to try it — upload your model and split it for free. When you're ready to download, start a 7-day free trial: a card's needed then, but you won't be charged until day 7, and you pay nothing if you cancel before.</p>
 
   <div class="card">
     <ul class="perks">
@@ -120,12 +120,9 @@
 </div>
 
 <script>
-// Instant, self-serve trial — no email-capture/review step first. The
-// account itself is created on app.html, which then sends them straight
-// to Stripe Checkout to add a card; Stripe's own trial_period_days handles
-// the 7 free days and auto-charges when it ends (see
-// create-checkout-session.js and stripe-webhook.js) — there's nothing to
-// gate here on this page.
+// The account is created on app.html and goes straight into the tool with no
+// card. A card is only asked for (via Checkout's 7-day trial) when they try
+// to download — see requireExportAccess() in app.html. Nothing to gate here.
 document.getElementById('startTrialBtn').addEventListener('click', () => {
   // The 'Lead' event now fires on app.html once someone actually finishes
   // signing up — not here, since this is just a click, not a completed

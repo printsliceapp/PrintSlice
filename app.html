@@ -154,6 +154,24 @@
   }
   #knownIssueBanner .close-btn:hover{ color:#4d3600; }
 
+  #trialBanner{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    background:var(--accent-soft); border-bottom:1px solid var(--line-strong);
+    color:var(--ink); font-size:13px; line-height:1.5; padding:10px 20px;
+  }
+  #trialBanner[hidden]{ display:none; }
+  #trialBanner span{ flex:1 1 280px; min-width:0; }
+  #trialBanner .btn-primary{ width:auto; margin:0; padding:8px 14px; font-size:12.5px; }
+
+  #exportGate .gate-panel{
+    background:var(--paper); border:1px solid var(--line-strong); border-radius:var(--radius);
+    box-shadow:var(--shadow-lg); width:min(420px,94vw); padding:26px 24px;
+  }
+  #exportGate h2{ font-size:19px; margin:0 0 8px; color:var(--ink); text-transform:none; letter-spacing:0; }
+  #exportGate p{ font-size:13.5px; color:var(--ink-soft); line-height:1.55; margin:0 0 16px; }
+  #exportGate .gate-fine{ font-size:12px; color:var(--ink-faint); margin:10px 0 0; text-align:center; }
+  #exportGate .btn-secondary{ margin-top:8px; }
+
   #piecesList { display:flex; flex-direction:column; gap:9px; max-height:320px; overflow-y:auto; padding-right:2px; }
   .piece-row {
     border:1px solid var(--line-strong); border-radius:var(--radius-sm); padding:11px 13px; font-size:13px;
@@ -367,30 +385,6 @@
     </div>
   </div>
 
-  <div class="auth-card" id="authCardPaywall" hidden="">
-    <div class="brand">
-      <div class="brand-icon">
-        <img src="/logo-icon.png" alt="PrintSlice logo" width="24" height="24">
-      </div>
-      <h1 style="font-size:16px;">PrintSlice Pro</h1>
-    </div>
-    <p class="sub">You're logged in as <b id="paywallEmail" style="color:var(--ink)"></b>. Subscribe to unlock the tool.</p>
-    <div class="paywall-price">£3.99<span>/month</span></div>
-    <ul class="paywall-features">
-      <li>Unlimited STL splits</li>
-      <li>Real CSG connector generation</li>
-      <li>Cancel anytime</li>
-    </ul>
-    <button class="btn-primary" id="subscribeBtn">Subscribe</button>
-    <div class="paywall-guarantee">Cancel anytime — no long-term commitment.</div>
-    <button class="btn-secondary" id="paywallLogoutBtn" style="margin-top:10px;">Log out</button>
-    <div class="auth-msg" id="paywallMsg"></div>
-    <div style="text-align:center; margin-top:14px; font-size:11.5px;">
-      <a href="/help.html" style="color:var(--ink-faint);">Help</a>
-      <span style="color:var(--ink-faint);"> · </span>
-      <a href="/contact.html" style="color:var(--ink-faint);">Contact</a>
-    </div>
-  </div>
 </div>
 <div id="app" hidden="">
   <header id="appHeader">
@@ -413,6 +407,20 @@
   <div id="knownIssueBanner" style="display:none;">
     <span><b>Known issue:</b> extremely complex or very dense models can sometimes fail to place connectors or export correctly. We're actively working on this — see the <a href="/help.html">Help &amp; FAQ</a> page for workarounds in the meantime.</span>
     <button class="close-btn" id="knownIssueBannerClose" aria-label="Dismiss">&times;</button>
+  </div>
+  <div id="trialBanner" hidden>
+    <span id="trialBannerText"><b>You're trying PrintSlice free.</b> Upload, split and add connectors as much as you like — you'll only need to start your free trial when you're ready to download.</span>
+    <button class="btn-primary" id="trialBannerBtn">Start free trial</button>
+  </div>
+  <div class="ppm-overlay" id="exportGate" hidden>
+    <div class="gate-panel" role="dialog" aria-modal="true" aria-labelledby="exportGateTitle">
+      <h2 id="exportGateTitle">Your pieces are ready</h2>
+      <p id="exportGateText">Start your free 7-day trial to download them. You won't be charged today — it's £3.99/month after day 7, and if you cancel before then you pay nothing.</p>
+      <button class="btn-primary" id="exportGateBtn">Start free trial</button>
+      <button class="btn-secondary" id="exportGateCancel">Not now</button>
+      <div class="auth-msg" id="exportGateMsg"></div>
+      <p class="gate-fine">Checkout opens in a new tab, so your model stays right here.</p>
+    </div>
   </div>
   <div id="appBody">
   <div id="sidebar">
@@ -578,7 +586,6 @@ const authGate = document.getElementById("authGate");
 const appEl = document.getElementById("app");
 const cardLoading = document.getElementById("authCardLoading");
 const cardLogin = document.getElementById("authCardLogin");
-const cardPaywall = document.getElementById("authCardPaywall");
 const authEmail = document.getElementById("authEmail");
 const authPassword = document.getElementById("authPassword");
 const authMsg = document.getElementById("authMsg");
@@ -589,7 +596,7 @@ const authSwitchLink = document.getElementById("authSwitchLink");
 let authMode = "login"; // 'login' | 'signup'
 
 function showCard(card){
-  [cardLoading, cardLogin, cardPaywall].forEach(c => c.hidden = (c !== card));
+  [cardLoading, cardLogin].forEach(c => c.hidden = (c !== card));
 }
 
 // A placeholder config would make Supabase's client constructor throw
@@ -616,7 +623,7 @@ function setAuthMode(mode){
   document.getElementById("authAgeRow").hidden = (mode !== "signup");
   if (mode === "signup"){
     authFormTitle.textContent = "Sign up";
-    authFormSub.textContent = "Create an account to get started.";
+    authFormSub.textContent = "Try it free — no card needed to upload and split your model. You'll only add one when you're ready to download.";
     authSubmitBtn.textContent = "Sign up";
     document.getElementById("authSwitch").innerHTML = 'Already have an account? <a id="authSwitchLink">Log in</a>';
   } else {
@@ -654,7 +661,7 @@ authSubmitBtn.addEventListener("click", async () => {
         options: { data: {
           confirmed_18_plus: true,
           accepted_terms_at: new Date().toISOString(),
-          terms_version: "2026-10-05",
+          terms_version: "2026-10-07",
         } },
       });
       if (error) throw error;
@@ -674,22 +681,12 @@ authSubmitBtn.addEventListener("click", async () => {
         // which page someone entered through, not just the ones who went
         // via early-access.html specifically.
         if (typeof rdt === "function") rdt("track", "Lead");
-        // Card is collected up front now (Stripe's own trial_period_days
-        // handles the 7 free days and auto-charges when it ends) — so a
-        // fresh signup goes straight to Checkout instead of straight into
-        // the app. If starting Checkout itself fails, fall back to
-        // refreshGate(): with no subscription on file yet they'll land on
-        // the paywall, which has its own "Subscribe" button as a retry
-        // path, rather than being left stuck on a dead signup form.
-        try {
-          const { url } = await callFunction("create-checkout-session", { withTrial: true });
-          window.location.href = url;
-          return; // leaving the page — don't fall through to `finally` re-enabling the button
-        } catch (checkoutErr) {
-          authMsg.textContent = "Account created, but couldn't start checkout — try subscribing from the next screen.";
-          authMsg.className = "auth-msg err";
-          await refreshGate();
-        }
+        // Straight into the app — no card yet. Splitting and previewing are
+        // free; the card (via Checkout's 7-day trial) is only asked for when
+        // they try to download. Asking for it up front, before anyone had
+        // seen the tool work on their own file, lost 14 of the first 15
+        // people who reached Checkout, none of whom even tried a card.
+        await refreshGate();
       } else {
         authMsg.textContent = "Check your email to confirm your account, then log in.";
         authMsg.className = "auth-msg ok";
@@ -722,24 +719,76 @@ async function callFunction(name, body){
   return res.json();
 }
 
-document.getElementById("subscribeBtn").addEventListener("click", async (e) => {
-  const btn = e.target;
-  btn.disabled = true;
-  const msg = document.getElementById("paywallMsg");
-  msg.textContent = ""; msg.className = "auth-msg";
+// Read by the download code (a separate script block) to decide whether an
+// export is allowed. Set by refreshGate() from the subscriptions row.
+window.printsliceCanExport = false;
+// Someone who's had a Stripe customer before has already used their one
+// trial (create-checkout-session enforces that server-side); this just keeps
+// the button wording honest — "Subscribe", not "Start free trial".
+let hasUsedTrial = false;
+
+function updateUpgradeWording(){
+  const label = hasUsedTrial ? "Subscribe — £3.99/month" : "Start free trial";
+  document.getElementById("trialBannerBtn").textContent = label;
+  document.getElementById("exportGateBtn").textContent = label;
+  document.getElementById("trialBannerText").innerHTML = hasUsedTrial
+    ? "<b>Your trial has ended.</b> You can still upload, split and preview — subscribe to download your pieces again."
+    : "<b>You're trying PrintSlice free.</b> Upload, split and add connectors as much as you like — you'll only need to start your free trial when you're ready to download.";
+  document.getElementById("exportGateText").textContent = hasUsedTrial
+    ? "Subscribe to download them — £3.99/month, cancel anytime."
+    : "Start your free 7-day trial to download them. You won't be charged today — it's £3.99/month after day 7, and if you cancel before then you pay nothing.";
+}
+
+// Checkout opens in a NEW tab so the model they've just split isn't thrown
+// away by a full-page redirect (re-uploading and re-placing connectors after
+// paying would be a miserable first experience). The blank tab has to be
+// opened synchronously inside the click — browsers block window.open() after
+// an await — and is then pointed at Stripe once the session URL comes back.
+// If popups are blocked anyway, fall back to a same-tab redirect.
+async function startCheckout(msgEl){
+  msgEl.textContent = ""; msgEl.className = "auth-msg";
+  const tab = window.open("", "_blank");
+  if (tab) tab.document.write("<p style='font-family:sans-serif;padding:24px'>Opening secure checkout…</p>");
   try {
-    // withTrial here too (not just at signup) so someone who backed out of
-    // entering a card the first time still gets their 7 days when they come
-    // back through the paywall — create-checkout-session itself is what
-    // actually enforces "only once ever" via the existing Stripe customer
-    // check, not this flag.
     const { url } = await callFunction("create-checkout-session", { withTrial: true });
-    window.location.href = url;
+    if (tab && !tab.closed){
+      tab.location.href = url;
+      msgEl.textContent = "Checkout opened in a new tab — your download unlocks here as soon as you finish.";
+      msgEl.className = "auth-msg ok";
+    } else {
+      window.location.href = url;
+    }
   } catch (err) {
-    msg.textContent = err.message; msg.className = "auth-msg err";
-    btn.disabled = false;
+    if (tab && !tab.closed) tab.close();
+    msgEl.textContent = err.message || "Couldn't start checkout."; msgEl.className = "auth-msg err";
   }
-});
+}
+
+const exportGate = document.getElementById("exportGate");
+window.printsliceShowExportGate = () => {
+  document.getElementById("exportGateMsg").textContent = "";
+  exportGate.hidden = false;
+};
+document.getElementById("exportGateCancel").addEventListener("click", () => { exportGate.hidden = true; });
+exportGate.addEventListener("click", (e) => { if (e.target === exportGate) exportGate.hidden = true; });
+document.getElementById("exportGateBtn").addEventListener("click", () => startCheckout(document.getElementById("exportGateMsg")));
+document.getElementById("trialBannerBtn").addEventListener("click", () => window.printsliceShowExportGate());
+
+// The checkout tab can't reliably talk back to this one (Stripe's pages
+// sever window.opener), so the success page leaves a note in localStorage,
+// which fires a "storage" event in every other open tab of this site — that,
+// plus a re-check whenever this tab regains focus, is what unlocks downloads
+// here without a reload.
+async function recheckSubscription(){
+  const wasLocked = !window.printsliceCanExport;
+  await loadSubscription();
+  if (wasLocked && window.printsliceCanExport){
+    exportGate.hidden = true;
+    if (typeof window.printsliceOnUnlocked === "function") window.printsliceOnUnlocked();
+  }
+}
+window.addEventListener("storage", (e) => { if (e.key === "printslice_checkout_done") recheckSubscription(); });
+window.addEventListener("focus", () => { if (!window.printsliceCanExport && !appEl.hidden) recheckSubscription(); });
 
 document.getElementById("manageBillingBtn").addEventListener("click", async () => {
   try {
@@ -755,12 +804,42 @@ async function logout(){
   await refreshGate();
 }
 document.getElementById("logoutBtn").addEventListener("click", logout);
-document.getElementById("paywallLogoutBtn").addEventListener("click", logout);
 
-// The actual gate: logged out -> login form. Logged in but not subscribed
-// -> paywall. Logged in and subscribed -> the real app. Subscription
-// status is read from Supabase (kept in sync by the Stripe webhook), never
-// trusted from anything computed in the browser.
+// Reads this user's subscription row and sets what they're allowed to do.
+// Splitting/previewing is open to every logged-in user; only downloading
+// needs an active trial or subscription. Status comes from Supabase (kept in
+// sync by the Stripe webhook). NB: the export itself runs in the browser, so
+// this — like the old full-page paywall before it — is a deterrent a
+// determined person could script around, not hard enforcement.
+async function loadSubscription(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+  const { data: sub, error: subErr } = await sb
+    .from("subscriptions")
+    .select("status, current_period_end, stripe_customer_id")
+    .eq("user_id", session.user.id)
+    .maybeSingle();
+  if (subErr) throw subErr;
+
+  // current_period_end doubles as a hard expiry, not just a display value —
+  // this is what makes a time-limited grant actually self-expire with no
+  // cron job or manual revocation needed. A null current_period_end (nothing
+  // set) is treated as unbounded, not expired, so this doesn't retroactively
+  // lock out any row that predates this check.
+  const notExpired = !sub?.current_period_end || new Date(sub.current_period_end) > new Date();
+  const active = !!sub && (sub.status === "active" || sub.status === "trialing") && notExpired;
+
+  window.printsliceCanExport = active;
+  hasUsedTrial = !!sub?.stripe_customer_id;
+  updateUpgradeWording();
+  document.getElementById("trialBanner").hidden = active;
+  // The billing portal needs a Stripe customer to open — pointless (and an
+  // error) for someone who's never been through Checkout.
+  document.getElementById("manageBillingBtn").hidden = !sub?.stripe_customer_id;
+}
+
+// The gate: logged out -> login form. Logged in -> the app, always; what
+// they can do inside it is set by loadSubscription().
 async function refreshGate(){
   showCard(cardLoading);
   authGate.hidden = false;
@@ -792,29 +871,10 @@ async function refreshGate(){
       return;
     }
 
-    const { data: sub, error: subErr } = await sb
-      .from("subscriptions")
-      .select("status, current_period_end")
-      .eq("user_id", session.user.id)
-      .maybeSingle();
-    if (subErr) throw subErr;
-
-    // current_period_end doubles as a hard expiry, not just a display value —
-    // this is what makes a time-limited grant (a week of early access, say)
-    // actually self-expire with no cron job or manual revocation needed: the
-    // gate just stops granting access once this timestamp passes. A null
-    // current_period_end (nothing set) is treated as unbounded, not expired,
-    // so this doesn't retroactively lock out any row that predates this check.
-    const notExpired = !sub?.current_period_end || new Date(sub.current_period_end) > new Date();
-    const active = sub && (sub.status === "active" || sub.status === "trialing") && notExpired;
-    if (active){
-      authGate.hidden = true;
-      appEl.hidden = false;
-      document.getElementById("accountEmail").textContent = session.user.email;
-    } else {
-      document.getElementById("paywallEmail").textContent = session.user.email;
-      showCard(cardPaywall);
-    }
+    await loadSubscription();
+    authGate.hidden = true;
+    appEl.hidden = false;
+    document.getElementById("accountEmail").textContent = session.user.email;
   } catch (err) {
     console.error("refreshGate failed:", err);
     cardLoading.innerHTML =
@@ -829,15 +889,28 @@ async function refreshGate(){
 sb.auth.onAuthStateChange(() => refreshGate());
 refreshGate();
 
-// If Stripe just redirected back after a successful checkout, the webhook
-// may take a second or two to land — poll briefly rather than showing the
-// paywall again immediately.
+// Back from a successful checkout (usually in the separate tab Checkout was
+// opened in). The webhook may take a second or two to land, so poll briefly
+// — and once it has, leave a note in localStorage so the ORIGINAL tab (the
+// one with their split model in it) unlocks its download via its "storage"
+// listener, plus tell them in this tab that they can head back there.
 if (new URLSearchParams(window.location.search).get("checkout") === "success"){
+  history.replaceState(null, "", window.location.pathname);
   let attempts = 0;
   const poll = setInterval(async () => {
     attempts++;
-    await refreshGate();
-    if (!appEl.hidden || attempts > 8) clearInterval(poll);
+    try { await loadSubscription(); } catch (e) { /* keep polling */ }
+    if (window.printsliceCanExport){
+      clearInterval(poll);
+      try { localStorage.setItem("printslice_checkout_done", String(Date.now())); } catch (e) {}
+      const banner = document.getElementById("trialBanner");
+      document.getElementById("trialBannerText").innerHTML =
+        "<b>You're all set — your trial has started.</b> If your model is open in another tab, you can download it there now.";
+      document.getElementById("trialBannerBtn").hidden = true;
+      banner.hidden = false;
+    } else if (attempts > 10){
+      clearInterval(poll);
+    }
   }, 1500);
 }
 </script>
@@ -6428,7 +6501,25 @@ function showExportValidationWarning(errors){
   console.error(text);
 }
 
+// Splitting and previewing are free; downloading needs an active trial or
+// subscription (window.printsliceCanExport is set by the auth script). If
+// they're locked out, remember what they were trying to download and finish
+// it automatically the moment checkout completes in the other tab.
+let pendingExport = null;
+function requireExportAccess(retry){
+  if (window.printsliceCanExport) return true;
+  pendingExport = retry;
+  window.printsliceShowExportGate();
+  return false;
+}
+window.printsliceOnUnlocked = () => {
+  const run = pendingExport;
+  pendingExport = null;
+  if (run) run();
+};
+
 function downloadSingle(piece){
+  if (!requireExportAccess(() => downloadSingle(piece))) return;
   const check = validateAllJoiningPoints([pieceKeyOf(piece)]);
   if (!check.ok) showExportValidationWarning(check.errors);
   const bytes = exportBinarySTL(piece.triangles);
@@ -6442,6 +6533,7 @@ function downloadSingle(piece){
 
 downloadAllBtn.addEventListener("click", ()=>{
   if (!computedPieces) return;
+  if (!requireExportAccess(() => downloadAllBtn.click())) return;
   const check = validateAllJoiningPoints(null);
   if (!check.ok) showExportValidationWarning(check.errors);
   const files = computedPieces.map(p => ({ name: p._exportName, data: exportBinarySTL(p.triangles) }));

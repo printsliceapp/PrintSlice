@@ -74,6 +74,12 @@ exports.handler = async (event) => {
         metadata: { supabase_user_id: user.id },
         ...(grantTrial ? { trial_period_days: 7 } : {}),
       },
+      // Shown right by Stripe's pay button. Nobody abandoning checkout had
+      // even tried entering a card — the worry is "am I being charged now?",
+      // so answer that at the exact moment they're deciding.
+      ...(grantTrial ? { custom_text: { submit: {
+        message: "You won't be charged today. Your 7-day free trial starts now, and you'll only pay £3.99/month if you don't cancel before it ends. Cancel anytime from \"Manage billing\" in the app.",
+      } } } : {}),
     });
 
     return { statusCode: 200, body: JSON.stringify({ url: session.url }) };
