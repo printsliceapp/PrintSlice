@@ -8,7 +8,7 @@
 (function(){
   // Paste the project ID from clarity.microsoft.com → Settings → Overview.
   // Left empty, this whole file does nothing — no banner, no tracking.
-  var CLARITY_PROJECT_ID = "";
+  var CLARITY_PROJECT_ID = "yty21xm2x6";
 
   var KEY = "printslice_analytics_consent";
 
