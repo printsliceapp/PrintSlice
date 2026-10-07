@@ -493,24 +493,7 @@
     </section>
 
     <section>
-      <h2><span class="step-num">2</span>Your printer</h2>
-      <div class="row">
-        <div style="flex-basis:100%;">
-          <label for="printerPreset">Printer</label>
-          <select id="printerPreset">
-            <option value="">Choose your printer…</option>
-            <option value="256,256,256">Bambu Lab A1 / P1S / P1P / X1 Carbon</option>
-            <option value="180,180,180">Bambu Lab A1 mini</option>
-            <option value="250,210,220">Prusa MK4 / MK4S</option>
-            <option value="180,180,180">Prusa MINI+</option>
-            <option value="220,220,250">Creality Ender 3 / V2 / V3 SE</option>
-            <option value="220,220,250">Creality K1 / K1C</option>
-            <option value="225,225,265">Elegoo Neptune 4 / 4 Pro</option>
-            <option value="custom">Other — I'll enter the size myself</option>
-          </select>
-        </div>
-      </div>
-      <div class="hint" style="margin:-2px 0 10px; font-size:12px; color:var(--ink-faint);">Bed size (mm) — filled in from your printer, or type your own.</div>
+      <h2><span class="step-num">2</span>Printer bed size (mm)</h2>
       <div class="row">
         <div><label>Bed X</label><input id="bedX" type="number" value="220" min="1" step="1"></div>
         <div><label>Bed Y</label><input id="bedY" type="number" value="220" min="1" step="1"></div>
@@ -5204,8 +5187,7 @@ function setStep(n, hint){
   if (hint) document.getElementById("stepHint").textContent = hint;
 }
 function stepAfterLoad(){
-  if (document.getElementById("printerPreset").value) setStep(3, "Press \"Split into bed-sized pieces\" below.");
-  else setStep(2, "Now pick your printer below (or type its bed size), then press Split.");
+  setStep(2, "Check the bed size below matches your printer, then press Split.");
 }
 
 const fileInput = document.getElementById("fileInput");
@@ -5284,34 +5266,10 @@ sampleBtn.addEventListener("click", async ()=>{
   }
 });
 
-// Printer picker: fills in the bed size so nobody has to know their
-// printer's build volume in millimetres. Remembered for next time. Typing a
-// size by hand switches it to "Other".
-const printerPreset = document.getElementById("printerPreset");
-const PRINTER_KEY = "printslice_printer_v1";
-function applyPrinterPreset(){
-  const v = printerPreset.value;
-  if (!v || v === "custom") return;
-  const [x, y, z] = v.split(",");
-  bedXInput.value = x; bedYInput.value = y; bedZInput.value = z;
-  bedXInput.dispatchEvent(new Event("change"));
-}
-printerPreset.addEventListener("change", ()=>{
-  applyPrinterPreset();
-  try { localStorage.setItem(PRINTER_KEY, printerPreset.selectedIndex); } catch (e) {}
-  if (currentTriangles && !lastSplitResult) setStep(3, "Press \"Split into bed-sized pieces\" below.");
-});
+// Editing the bed size counts as finishing the "Printer" step.
 [bedXInput, bedYInput, bedZInput].forEach(inp => inp.addEventListener("input", ()=>{
-  printerPreset.value = "custom";
-  try { localStorage.setItem(PRINTER_KEY, printerPreset.selectedIndex); } catch (e) {}
+  if (currentTriangles && !lastSplitResult) setStep(3, "Press \"Split into bed-sized pieces\" below.");
 }));
-try {
-  const saved = Number(localStorage.getItem(PRINTER_KEY));
-  if (saved > 0 && saved < printerPreset.options.length){
-    printerPreset.selectedIndex = saved;
-    applyPrinterPreset();
-  }
-} catch (e) {}
 
 function handleFile(file){
   currentFileBase = file.name.replace(/\.stl$/i, "") || "model";
