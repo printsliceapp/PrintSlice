@@ -104,7 +104,7 @@
       <span class="brand-name">PrintSlice</span>
     </a>
     <div class="nav-links">
-      <a href="/app.html">Log In</a>
+      <a href="/app.html?login=1">Log In</a>
       <a href="/help.html">Help</a>
       <a href="/contact.html">Contact</a>
       <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a>
@@ -118,7 +118,7 @@
   <p class="lede">Drop in an STL and PrintSlice cuts it into pieces that fit your printer — with snap-fit joints so they click back together.</p>
 
   <button type="button" id="startTrialBtn">Try it free</button>
-  <p class="fine" style="text-align:center; margin:10px 0 22px;">No card to sign up and split your models.</p>
+  <p class="fine" style="text-align:center; margin:10px 0 22px;">No account or card needed to try it.</p>
 
   <div class="demo">
     <video src="/hero-3d.mp4" autoplay loop muted playsinline aria-label="PrintSlice splitting a 3D model into bed-sized pieces"></video>
@@ -138,16 +138,16 @@
 </div>
 
 <script>
-// The account is created on app.html and goes straight into the tool with no
-// card. A card is only asked for (via Checkout's 7-day trial) when they try
-// to download — see requireExportAccess() in app.html. Nothing to gate here.
+// Straight into the tool — no account, no card. Both are only asked for when
+// they try to download (account first, then Checkout's 7-day trial) — see
+// requireExportAccess() in app.html. Nothing to gate here.
 document.getElementById('startTrialBtn').addEventListener('click', () => {
   // The 'Lead' event now fires on app.html once someone actually finishes
   // signing up — not here, since this is just a click, not a completed
   // account. Firing it here too would double-count anyone who clicks this
   // AND finishes signing up, and would also miss real signups that arrive
   // at app.html some other way (e.g. the homepage's own signup buttons).
-  window.location.href = '/app.html?signup=1';
+  window.location.href = '/app.html';
 });
 </script>
 

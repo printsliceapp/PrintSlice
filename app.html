@@ -333,19 +333,24 @@
   }
 
   /* ---- auth / paywall gate ---- */
+  /* A modal over the app — the app itself is open to everyone, the account
+     form only appears when it's needed (downloading) or asked for (Log in). */
   #authGate{
     position:fixed; inset:0; z-index:500; display:flex; align-items:center; justify-content:center;
-    background:var(--bg); padding:20px;
-    background-image:
-      linear-gradient(var(--line) 1px, transparent 1px),
-      linear-gradient(90deg, var(--line) 1px, transparent 1px);
-    background-size:64px 64px;
+    background:rgba(1,22,30,.55); padding:20px; overflow-y:auto;
   }
   #authGate[hidden]{ display:none; }
   .auth-card{
+    position:relative;
     width:min(400px, 100%); background:var(--paper); border:1px solid var(--line-strong);
     border-radius:var(--radius-lg); box-shadow:var(--shadow-lg); padding:32px 28px;
+    margin:auto;
   }
+  .auth-close{
+    position:absolute; top:10px; right:10px; width:auto; margin:0; padding:4px 9px;
+    background:none; border:none; color:var(--ink-faint); font-size:22px; line-height:1; font-weight:400;
+  }
+  .auth-close:hover{ color:var(--ink); }
   .auth-card .brand{ margin-bottom:22px; }
   .auth-card h2{ font-size:19px; margin:0 0 6px; color:var(--ink); text-transform:none; letter-spacing:0; }
   .auth-card p.sub{ font-size:13.5px; color:var(--ink-soft); margin:0 0 20px; line-height:1.55; }
@@ -386,12 +391,9 @@
   <input type="email" name="email">
 </form>
 
-<div id="authGate">
-  <div class="auth-card" id="authCardLoading">
-    <div class="auth-loading">Loading…</div>
-  </div>
-
-  <div class="auth-card" id="authCardLogin" hidden="">
+<div id="authGate" hidden>
+  <div class="auth-card" id="authCardLogin" role="dialog" aria-modal="true" aria-labelledby="authFormTitle">
+    <button class="auth-close" id="authCloseBtn" aria-label="Close">&times;</button>
     <div class="brand">
       <div class="brand-icon">
         <img src="/logo-icon.png" alt="PrintSlice logo" width="24" height="24">
@@ -418,7 +420,7 @@
   </div>
 
 </div>
-<div id="app" hidden="">
+<div id="app">
   <header id="appHeader">
     <a class="brand" href="/">
       <div class="brand-icon">
@@ -431,9 +433,11 @@
       <a href="/contact.html">Contact</a>
     </nav>
     <div class="header-account">
-      <span id="accountEmail" class="notranslate" translate="no"></span>
-      <button class="btn-secondary" id="manageBillingBtn">Manage billing</button>
-      <button class="btn-secondary" id="logoutBtn">Log out</button>
+      <span id="accountEmail" class="notranslate" translate="no" hidden></span>
+      <button class="btn-secondary" id="manageBillingBtn" hidden>Manage billing</button>
+      <button class="btn-secondary" id="logoutBtn" hidden>Log out</button>
+      <button class="btn-secondary" id="headerLoginBtn" hidden>Log in</button>
+      <button class="btn-primary" id="headerSignupBtn" hidden>Sign up</button>
     </div>
   </header>
   <div id="knownIssueBanner" style="display:none;">
@@ -634,8 +638,6 @@ const SUPABASE_ANON_KEY = "sb_publishable_XrMH5uYGeGZdUYvK4eTI2Q_40kHYrKX";
 
 const authGate = document.getElementById("authGate");
 const appEl = document.getElementById("app");
-const cardLoading = document.getElementById("authCardLoading");
-const cardLogin = document.getElementById("authCardLogin");
 const authEmail = document.getElementById("authEmail");
 const authPassword = document.getElementById("authPassword");
 const authMsg = document.getElementById("authMsg");
@@ -645,35 +647,29 @@ const authSubmitBtn = document.getElementById("authSubmitBtn");
 const authSwitchLink = document.getElementById("authSwitchLink");
 let authMode = "login"; // 'login' | 'signup'
 
-function showCard(card){
-  [cardLoading, cardLogin].forEach(c => c.hidden = (c !== card));
-}
-
 // A placeholder config would make Supabase's client constructor throw
-// synchronously, silently killing every line of script after it — leaving
-// the page stuck on "Loading…" forever with no indication why. That's a
-// bad failure mode for local testing/setup, so it's checked explicitly and
-// reported clearly instead.
+// synchronously, silently killing every line of script after it. Checked
+// explicitly so the cause is obvious in the console during setup.
 if (SUPABASE_URL.startsWith("YOUR_") || SUPABASE_ANON_KEY.startsWith("YOUR_")){
-  cardLoading.innerHTML =
-    '<div class="auth-loading" style="text-align:left;">' +
-    '<b style="color:var(--ink);">Not configured yet.</b><br><br>' +
-    'Open <code>app.html</code> and fill in <code>SUPABASE_URL</code> and ' +
-    '<code>SUPABASE_ANON_KEY</code> near the top of the auth script ' +
-    '(find them in your Supabase project’s Settings → API page), ' +
-    'then reload this page.</div>';
-  throw new Error("PrintSlice: Supabase is not configured — see the message on screen.");
+  throw new Error("PrintSlice: fill in SUPABASE_URL and SUPABASE_ANON_KEY near the top of the auth script in app.html.");
 }
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Set when the form was opened by a download attempt: the sign-up subtitle
+// then explains why it's being asked for, and finishing it carries straight
+// on to the trial step (see afterSignIn) instead of just closing.
+let authForDownload = false;
 
 function setAuthMode(mode){
   authMode = mode;
   authMsg.textContent = "";
   document.getElementById("authAgeRow").hidden = (mode !== "signup");
   if (mode === "signup"){
-    authFormTitle.textContent = "Sign up";
-    authFormSub.textContent = "Try it free — no card needed to upload and split your model. You'll only add one when you're ready to download.";
+    authFormTitle.textContent = authForDownload ? "Your pieces are ready" : "Sign up";
+    authFormSub.textContent = authForDownload
+      ? "Create a free account to download them. Next, you'll start your 7-day free trial — no charge today."
+      : "Create a free account. Splitting is free — you'll only need your 7-day free trial when you're ready to download.";
     authSubmitBtn.textContent = "Sign up";
     document.getElementById("authSwitch").innerHTML = 'Already have an account? <a id="authSwitchLink">Log in</a>';
   } else {
@@ -684,9 +680,40 @@ function setAuthMode(mode){
   }
   document.getElementById("authSwitchLink").addEventListener("click", () => setAuthMode(mode === "signup" ? "login" : "signup"));
 }
-// A "?signup=1" link (e.g. from the early-access page's "Start your free
-// trial" button) should land straight on the sign-up form, not login.
-setAuthMode(new URLSearchParams(window.location.search).get("signup") === "1" ? "signup" : "login");
+
+function openAuth(mode, forDownload){
+  authForDownload = !!forDownload;
+  setAuthMode(mode);
+  authGate.hidden = false;
+  setTimeout(() => authEmail.focus(), 0);
+}
+function closeAuth(){
+  authGate.hidden = true;
+  authForDownload = false;
+  pendingAfterAuth = null;
+}
+document.getElementById("authCloseBtn").addEventListener("click", closeAuth);
+authGate.addEventListener("click", (e) => { if (e.target === authGate) closeAuth(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !authGate.hidden) closeAuth(); });
+document.getElementById("headerLoginBtn").addEventListener("click", () => openAuth("login"));
+document.getElementById("headerSignupBtn").addEventListener("click", () => openAuth("signup"));
+[authEmail, authPassword].forEach(el => el.addEventListener("keydown", (e) => { if (e.key === "Enter") authSubmitBtn.click(); }));
+
+// What to do once they're signed in, if the form was opened for a reason
+// (a download attempt) rather than from the header's Log in / Sign up.
+let pendingAfterAuth = null;
+function afterSignIn(){
+  const next = pendingAfterAuth;
+  closeAuth();
+  if (next) next();
+}
+
+// The app opens for everyone with no account. "?login=1" (the site's "Log In"
+// links) opens the login form over it; "?signup=1" (older "Start free trial"
+// links) now just lands in the app like everyone else — the account is only
+// asked for at download.
+setAuthMode("signup");
+if (new URLSearchParams(window.location.search).get("login") === "1") openAuth("login");
 
 authSubmitBtn.addEventListener("click", async () => {
   const email = authEmail.value.trim();
@@ -711,7 +738,7 @@ authSubmitBtn.addEventListener("click", async () => {
         options: { data: {
           confirmed_18_plus: true,
           accepted_terms_at: new Date().toISOString(),
-          terms_version: "2026-10-07",
+          terms_version: "2026-10-15",
         } },
       });
       if (error) throw error;
@@ -731,21 +758,21 @@ authSubmitBtn.addEventListener("click", async () => {
         // which page someone entered through, not just the ones who went
         // via early-access.html specifically.
         if (typeof rdt === "function") rdt("track", "Lead");
-        // Straight into the app — no card yet. Splitting and previewing are
-        // free; the card (via Checkout's 7-day trial) is only asked for when
-        // they try to download. Asking for it up front, before anyone had
-        // seen the tool work on their own file, lost 14 of the first 15
-        // people who reached Checkout, none of whom even tried a card.
+        // Back to whatever they were doing — usually a download, which now
+        // moves on to the trial step. The model they split is still loaded:
+        // signing up never leaves or reloads this page.
         await refreshGate();
+        afterSignIn();
       } else {
+        setAuthMode("login");
         authMsg.textContent = "Check your email to confirm your account, then log in.";
         authMsg.className = "auth-msg ok";
-        setAuthMode("login");
       }
     } else {
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
       await refreshGate();
+      afterSignIn();
     }
   } catch (err) {
     authMsg.textContent = err.message || "Something went wrong.";
@@ -814,15 +841,31 @@ async function startCheckout(msgEl){
   }
 }
 
+// Logged in -> run fn now. Logged out -> the sign-up form first, then fn
+// once they're in (afterSignIn), all without leaving the page.
+let currentSession = null;
+function needAccountThen(fn, forDownload){
+  if (currentSession) return fn();
+  openAuth("signup", forDownload);
+  pendingAfterAuth = fn;
+}
+
+// The download step: account (if they haven't got one) -> trial/subscribe.
+// Someone who logs in to an account that's already subscribed skips the
+// trial step and gets the download they asked for straight away.
 const exportGate = document.getElementById("exportGate");
-window.printsliceShowExportGate = () => {
+window.printsliceShowExportGate = (forDownload = true) => needAccountThen(() => {
+  if (window.printsliceCanExport){
+    if (typeof window.printsliceOnUnlocked === "function") window.printsliceOnUnlocked();
+    return;
+  }
   document.getElementById("exportGateMsg").textContent = "";
   exportGate.hidden = false;
-};
+}, forDownload);
 document.getElementById("exportGateCancel").addEventListener("click", () => { exportGate.hidden = true; });
 exportGate.addEventListener("click", (e) => { if (e.target === exportGate) exportGate.hidden = true; });
 document.getElementById("exportGateBtn").addEventListener("click", () => startCheckout(document.getElementById("exportGateMsg")));
-document.getElementById("trialBannerBtn").addEventListener("click", () => window.printsliceShowExportGate());
+document.getElementById("trialBannerBtn").addEventListener("click", () => window.printsliceShowExportGate(false));
 
 // The checkout tab can't reliably talk back to this one (Stripe's pages
 // sever window.opener), so the success page leaves a note in localStorage,
@@ -888,51 +931,52 @@ async function loadSubscription(){
   document.getElementById("manageBillingBtn").hidden = !sub?.stripe_customer_id;
 }
 
-// The gate: logged out -> login form. Logged in -> the app, always; what
-// they can do inside it is set by loadSubscription().
+// The app is always shown — to visitors with no account too. This only sets
+// the header (Log in / Sign up vs. email / Log out) and, for signed-in users,
+// what they're allowed to do (loadSubscription). It never hides the app, so
+// signing in or out never throws away a model they've loaded.
 async function refreshGate(){
-  showCard(cardLoading);
-  authGate.hidden = false;
-  appEl.hidden = true;
-
-  // Without this try/catch, any hiccup talking to Supabase (a rate limit,
-  // a dropped connection, anything) left the page stuck showing "Loading…"
-  // forever with no visible error — confirmed by direct testing. Every
-  // failure now shows a clear message with a way to retry instead of
-  // silently hanging.
+  let session = null;
   try {
-    const { data: { session }, error: sessionErr } = await sb.auth.getSession();
+    const { data, error: sessionErr } = await sb.auth.getSession();
     if (sessionErr) throw sessionErr;
-
-    // Bounce back to wherever sent them here to sign up, the moment we know
-    // they're actually logged in — regardless of subscription status, since
-    // the point is just "you now have an account," not "you're subscribed."
-    // Cleared immediately so this only ever fires once, not on every future
-    // login this browser ever does.
-    const pendingNext = sessionStorage.getItem("printslice_next");
-    if (session && pendingNext){
-      sessionStorage.removeItem("printslice_next");
-      window.location.href = pendingNext;
-      return;
-    }
-
-    if (!session){
-      showCard(cardLogin);
-      return;
-    }
-
-    await loadSubscription();
-    authGate.hidden = true;
-    appEl.hidden = false;
-    document.getElementById("accountEmail").textContent = session.user.email;
+    session = data.session;
   } catch (err) {
-    console.error("refreshGate failed:", err);
-    cardLoading.innerHTML =
-      '<div class="auth-loading" style="text-align:left;">' +
-      '<b style="color:var(--bad);">Something went wrong loading your account.</b><br><br>' +
-      (err?.message || "Unknown error") + '<br><br>' +
-      '<button class="btn-secondary" id="gateRetryBtn" style="width:auto;">Retry</button></div>';
-    document.getElementById("gateRetryBtn").addEventListener("click", refreshGate);
+    console.error("Couldn't read the login session:", err);
+  }
+  currentSession = session;
+
+  // Bounce back to wherever sent them here to sign up, the moment we know
+  // they're actually logged in. Cleared immediately so this only ever fires
+  // once, not on every future login this browser ever does.
+  const pendingNext = sessionStorage.getItem("printslice_next");
+  if (session && pendingNext){
+    sessionStorage.removeItem("printslice_next");
+    window.location.href = pendingNext;
+    return;
+  }
+
+  const signedIn = !!session;
+  document.getElementById("accountEmail").textContent = signedIn ? session.user.email : "";
+  document.getElementById("accountEmail").hidden = !signedIn;
+  document.getElementById("logoutBtn").hidden = !signedIn;
+  document.getElementById("headerLoginBtn").hidden = signedIn;
+  document.getElementById("headerSignupBtn").hidden = signedIn;
+
+  if (!signedIn){
+    window.printsliceCanExport = false;
+    hasUsedTrial = false;
+    updateUpgradeWording();
+    document.getElementById("manageBillingBtn").hidden = true;
+    document.getElementById("trialBanner").hidden = false;
+    return;
+  }
+
+  try {
+    await loadSubscription();
+  } catch (err) {
+    // Downloads stay locked until this works; the focus re-check retries it.
+    console.error("Couldn't load the subscription:", err);
   }
 }
 
