@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://printslice.co.uk/sitemap.xml
