@@ -27,7 +27,7 @@ function split(model, bed){
 function esc(s){ return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function plain(html){ return html.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"'); }
 
-const PRICING = "Splitting and previewing is free, with no account needed. To download the pieces you create a free account and start a 7-day free trial (a card is needed, but you aren't charged until the 7 days are up and you can cancel before then). After that it's £3.99 a month.";
+const PRICING = "Splitting and previewing is free, with no account needed, and your first model is free to download with a free account. To download more models, start a 7-day free trial (a card is needed, but you aren't charged until the 7 days are up and you can cancel before then). After that it's £3.99 a month.";
 const PRIVACY = "No. The splitting, connectors and 3D preview all run in your browser, so your STL file never leaves your computer.";
 const FIT = "Yes. Each tab and socket pair is made from the same shape with a small built-in clearance (0.2 mm by default, adjustable per connector), so the pieces push together without sanding. You can choose a rectangular key, a round pin or a dovetail, which resists being pulled apart.";
 const SLICER_CUT = slicer => `${slicer}'s cut tool is fine for one or two cuts you place by hand. PrintSlice is quicker when a model needs several: it works out every cut from your bed size, splits along all three axes in one go, and adds key, pin or dovetail connectors on the seams.`;
@@ -512,7 +512,7 @@ function guidePage(g){
 
   <div class="cta-box">
     <a class="btn" href="${bedParam(g.bed)}">Open PrintSlice with a ${dims(g.bed)} bed</a>
-    <p>Free to split and preview, with no account needed. The bed size is filled in for you.</p>
+    <p>Free to split and preview, and your first model is free to download. The bed size is filled in for you.</p>
   </div>
 
   <h2>${g.name} at a glance</h2>

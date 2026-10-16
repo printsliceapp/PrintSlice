@@ -684,8 +684,8 @@ function setAuthMode(mode){
   if (mode === "signup"){
     authFormTitle.textContent = authForDownload ? "Your pieces are ready" : "Sign up";
     authFormSub.textContent = authForDownload
-      ? "Create a free account to download them. Next, you'll start your 7-day free trial — no charge today."
-      : "Create a free account. Splitting is free — you'll only need your 7-day free trial when you're ready to download.";
+      ? "Create a free account to download them. Your first model is free, with no card needed."
+      : "Create a free account. Splitting is free, and so is downloading your first model.";
     authSubmitBtn.textContent = "Sign up";
     document.getElementById("authSwitch").innerHTML = 'Already have an account? <a id="authSwitchLink">Log in</a>';
   } else {
@@ -754,7 +754,7 @@ authSubmitBtn.addEventListener("click", async () => {
         options: { data: {
           confirmed_18_plus: true,
           accepted_terms_at: new Date().toISOString(),
-          terms_version: "2026-10-15",
+          terms_version: "2026-10-16",
         } },
       });
       if (error) throw error;
@@ -820,16 +820,35 @@ window.printsliceCanExport = false;
 // the button wording honest — "Subscribe", not "Start free trial".
 let hasUsedTrial = false;
 
+// First model free: a new account can download one model's pieces with no
+// trial or card. The model is identified by window.printsliceModelFp (set by
+// the main app script when a file is loaded) and recorded on the account as
+// user_metadata.free_model_fp the first time they download it; after that,
+// that same model stays downloadable and any other one needs the trial.
+// Only accounts that have never completed a checkout get it (hasUsedTrial).
+// Like the rest of this gate it's a deterrent, not hard enforcement: user
+// metadata is writable by the user, and the export runs in the browser.
+// The sample model is always free to download once signed in, so trying it
+// never uses up someone's free model.
+let freeModelFp = null;
+window.printsliceFreeModelOk = () => !!currentSession && !!window.printsliceModelFp &&
+  (window.printsliceModelFp === "sample" || window.printsliceModelFp === freeModelFp);
+
 function updateUpgradeWording(){
   const label = hasUsedTrial ? "Subscribe — £3.99/month" : "Start free trial";
   document.getElementById("trialBannerBtn").textContent = label;
   document.getElementById("exportGateBtn").textContent = label;
-  document.getElementById("trialBannerText").innerHTML = hasUsedTrial
-    ? "<b>Your trial has ended.</b> You can still upload, split and preview — subscribe to download your pieces again."
-    : "<b>You're trying PrintSlice free.</b> Upload, split and add connectors as much as you like — you'll only need to start your free trial when you're ready to download.";
-  document.getElementById("exportGateText").textContent = hasUsedTrial
-    ? "Subscribe to download them — £3.99/month, cancel anytime."
-    : "Start your free 7-day trial to download them. You won't be charged today — it's £3.99/month after day 7, and if you cancel before then you pay nothing.";
+  const trialText = "Start your free 7-day trial to download them. You won't be charged today — it's £3.99/month after day 7, and if you cancel before then you pay nothing.";
+  if (hasUsedTrial){
+    document.getElementById("trialBannerText").innerHTML = "<b>Your trial has ended.</b> You can still upload, split and preview — subscribe to download your pieces again.";
+    document.getElementById("exportGateText").textContent = "Subscribe to download them — £3.99/month, cancel anytime.";
+  } else if (freeModelFp){
+    document.getElementById("trialBannerText").innerHTML = "<b>Your free model is unlocked.</b> Download its pieces as often as you like. To download a different model, start your free 7-day trial.";
+    document.getElementById("exportGateText").innerHTML = "<b>You've used your free model.</b> " + trialText;
+  } else {
+    document.getElementById("trialBannerText").innerHTML = "<b>You're trying PrintSlice free.</b> Upload, split and add connectors as much as you like. Your first model's download is free too: you just need an account.";
+    document.getElementById("exportGateText").textContent = trialText;
+  }
 }
 
 // Checkout opens in a NEW tab so the model they've just split isn't thrown
@@ -866,16 +885,30 @@ function needAccountThen(fn, forDownload){
   pendingAfterAuth = fn;
 }
 
-// The download step: account (if they haven't got one) -> trial/subscribe.
-// Someone who logs in to an account that's already subscribed skips the
-// trial step and gets the download they asked for straight away.
+// The download step: account (if they haven't got one) -> free first model,
+// or trial/subscribe once that's used. Someone who logs in to an account
+// that's already subscribed skips straight to the download they asked for.
 const exportGate = document.getElementById("exportGate");
-window.printsliceShowExportGate = (forDownload = true) => needAccountThen(() => {
-  if (window.printsliceCanExport){
-    if (typeof window.printsliceOnUnlocked === "function") window.printsliceOnUnlocked();
-    return;
+window.printsliceShowExportGate = (forDownload = true) => needAccountThen(async () => {
+  const unlock = () => { if (typeof window.printsliceOnUnlocked === "function") window.printsliceOnUnlocked(); };
+  if (window.printsliceCanExport || window.printsliceFreeModelOk()) return unlock();
+  const msgEl = document.getElementById("exportGateMsg");
+  msgEl.textContent = ""; msgEl.className = "auth-msg";
+  // Only an actual download claims the free model — not the banner's
+  // "Start free trial" button, which also opens this.
+  const fp = window.printsliceModelFp;
+  if (forDownload && fp && !hasUsedTrial && !freeModelFp){
+    try {
+      const { error } = await sb.auth.updateUser({ data: { free_model_fp: fp, free_model_claimed_at: new Date().toISOString() } });
+      if (error) throw error;
+      freeModelFp = fp;
+      updateUpgradeWording();
+      return unlock();
+    } catch (err) {
+      console.error("Couldn't claim the free model:", err);
+      msgEl.textContent = "Couldn't unlock your free model. Please try again."; msgEl.className = "auth-msg err";
+    }
   }
-  document.getElementById("exportGateMsg").textContent = "";
   exportGate.hidden = false;
 }, forDownload);
 document.getElementById("exportGateCancel").addEventListener("click", () => { exportGate.hidden = true; });
@@ -979,6 +1012,7 @@ async function refreshGate(){
   document.getElementById("headerLoginBtn").hidden = signedIn;
   document.getElementById("headerSignupBtn").hidden = signedIn;
 
+  freeModelFp = signedIn ? (session.user.user_metadata?.free_model_fp || null) : null;
   if (!signedIn){
     window.printsliceCanExport = false;
     hasUsedTrial = false;
@@ -5335,6 +5369,7 @@ sampleBtn.addEventListener("click", async ()=>{
     if (!res.ok) throw new Error("couldn't download the sample");
     const triangles = parseSTL(await res.arrayBuffer());
     currentFileBase = "printslice-sample";
+    setModelFingerprint(triangles, true);
     loadMesh(triangles);
   } catch (err){
     statusEl.innerHTML = '<span class="bad">Couldn\'t load the sample model: ' + err.message + '</span>';
@@ -5348,12 +5383,23 @@ sampleBtn.addEventListener("click", async ()=>{
   if (currentTriangles && !lastSplitResult) setStep(3, "Press \"Split into bed-sized pieces\" below.");
 }));
 
+// Identifies the loaded model for the "first model free" download (see
+// printsliceFreeModelOk in the auth script): its triangle count and size.
+// Set when a file or the sample is loaded, not when it's simplified, so a
+// simplified copy still counts as the same model.
+function setModelFingerprint(triangles, isSample){
+  if (isSample){ window.printsliceModelFp = "sample"; return; }
+  const b = computeBBox(triangles);
+  window.printsliceModelFp = triangles.length + ":" + [0, 1, 2].map(i => (b.max[i] - b.min[i]).toFixed(2)).join("x");
+}
+
 function handleFile(file){
   currentFileBase = file.name.replace(/\.stl$/i, "") || "model";
   const reader = new FileReader();
   reader.onload = function(e){
     try {
       const triangles = parseSTL(e.target.result);
+      setModelFingerprint(triangles, false);
       loadMesh(triangles);
     } catch (err){
       statusEl.innerHTML = '<span class="bad">Error: ' + err.message + '</span>';
@@ -6689,12 +6735,14 @@ function showExportValidationWarning(errors){
 }
 
 // Splitting and previewing are free; downloading needs an active trial or
-// subscription (window.printsliceCanExport is set by the auth script). If
+// subscription (window.printsliceCanExport is set by the auth script), or
+// this being the account's free model (window.printsliceFreeModelOk). If
 // they're locked out, remember what they were trying to download and finish
-// it automatically the moment checkout completes in the other tab.
+// it automatically once they've signed up, claimed the free model, or
+// completed checkout in the other tab.
 let pendingExport = null;
 function requireExportAccess(retry){
-  if (window.printsliceCanExport) return true;
+  if (window.printsliceCanExport || window.printsliceFreeModelOk()) return true;
   pendingExport = retry;
   window.printsliceShowExportGate();
   return false;
