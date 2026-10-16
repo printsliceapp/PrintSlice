@@ -3,7 +3,19 @@
 <meta charset="UTF-8">
 <script src="/i18n.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>STL Bed Splitter</title>
+<title>PrintSlice - Split STL Files to Fit Your Printer Bed</title>
+<meta name="description" content="Split an oversized STL into bed-sized pieces with pin, key or dovetail connectors, right in your browser. Your model never leaves your computer.">
+<link rel="canonical" href="https://printslice.co.uk/app.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PrintSlice">
+<meta property="og:url" content="https://printslice.co.uk/app.html">
+<meta property="og:title" content="PrintSlice - Split STL Files to Fit Your Printer Bed">
+<meta property="og:description" content="Split an oversized STL into bed-sized pieces with pin, key or dovetail connectors, right in your browser. Your model never leaves your computer.">
+<meta property="og:image" content="https://printslice.co.uk/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="PrintSlice: a model split into four pieces that fit a printer bed">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
 <link rel="icon" href="/favicon-96.png" sizes="96x96" type="image/png">
@@ -5236,7 +5248,8 @@ function setStep(n, hint){
   if (hint) document.getElementById("stepHint").textContent = hint;
 }
 function stepAfterLoad(){
-  setStep(2, "Check the bed size below matches your printer, then press Split.");
+  if (bedFromLink) setStep(3, "Bed size is set for your printer. Press \"Split into bed-sized pieces\" below.");
+  else setStep(2, "Check the bed size below matches your printer, then press Split.");
 }
 
 const fileInput = document.getElementById("fileInput");
@@ -5254,6 +5267,21 @@ const simplifyKeepBtn = document.getElementById("simplifyKeepBtn");
 const bedXInput = document.getElementById("bedX");
 const bedYInput = document.getElementById("bedY");
 const bedZInput = document.getElementById("bedZ");
+
+// The printer guide pages link here with ?bed=180x180x180 so the visitor's
+// bed size is already filled in. Anything that isn't three sane numbers is
+// ignored and the defaults stay.
+let bedFromLink = false;
+(function(){
+  const m = (new URLSearchParams(window.location.search).get("bed") || "").match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/i);
+  if (!m) return;
+  const dims = m.slice(1).map(Number);
+  if (dims.some(v => !(v >= 1 && v <= 2000))) return;
+  bedXInput.value = dims[0];
+  bedYInput.value = dims[1];
+  bedZInput.value = dims[2];
+  bedFromLink = true;
+})();
 const marginInput = document.getElementById("margin");
 const tabSizeInput = document.getElementById("tabSize");
 const tabDepthInput = document.getElementById("tabDepth");
