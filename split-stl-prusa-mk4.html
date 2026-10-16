@@ -159,8 +159,10 @@
   }
   .faq-item h3{ font-size:16.5px; margin:0 0 9px; color:var(--ink); }
   .faq-item p{ font-size:14px; line-height:1.65; margin:0; }
-  .related{ list-style:none; padding:0; margin:0; display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:8px 20px; }
-  .related li{ font-size:14.5px; }
+  .related{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:18px 24px; }
+  .related h3{ font-size:11.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 8px; }
+  .related ul{ list-style:none; padding:0; margin:0; }
+  .related li{ font-size:14.5px; margin:0 0 6px; }
   footer{ margin-top:48px; text-align:center; font-size:13px; color:var(--ink-faint); }
   footer a{ color:var(--ink-faint); }
   @media (max-width: 600px){
@@ -228,11 +230,11 @@
   </div>
   <div class="tip">
     <h3>Prusa MINI+ owners</h3>
-    <p>Enter 180 × 180 × 180 for the bed. Expect more pieces than on the MK4; the same panel needs 6 on a MINI+.</p>
+    <p>Enter 180 × 180 × 180 for the bed. Expect more pieces than on the MK4; the same panel needs 6 on a MINI+. See the <a href="/split-stl-prusa-mini.html">MINI+ guide</a>.</p>
   </div>
   <div class="tip">
     <h3>CORE One owners</h3>
-    <p>Enter 250 × 220 × 270. The extra 50 mm of height often avoids a horizontal cut on tall models.</p>
+    <p>Enter 250 × 220 × 270. The extra 50 mm of height often avoids a horizontal cut on tall models. See the <a href="/split-stl-prusa-core-one.html">CORE One guide</a>.</p>
   </div>
   <div class="tip">
     <h3>Start with the default clearance</h3>
@@ -270,13 +272,53 @@
   </div>
 
   <h2>More printer guides</h2>
-  <ul class="related">
-    <li><a href="/split-stl-bambu-a1-mini.html">Split STL files for the Bambu Lab A1 mini</a></li>
-    <li><a href="/split-stl-bambu-a1.html">Split STL files for the Bambu Lab A1</a></li>
-    <li><a href="/split-stl-bambu-p1s.html">Split STL files for the Bambu Lab P1S</a></li>
-    <li><a href="/split-stl-ender-3.html">Split STL files for the Creality Ender 3</a></li>
-    <li><a href="/printer-bed-sizes.html">Bed sizes for every popular printer</a></li>
-  </ul>
+  <div class="related">
+    <div>
+      <h3>Bambu Lab</h3>
+      <ul>
+        <li><a href="/split-stl-bambu-a1-mini.html">Bambu Lab A1 mini</a></li>
+        <li><a href="/split-stl-bambu-a1.html">Bambu Lab A1</a></li>
+        <li><a href="/split-stl-bambu-p1s.html">Bambu Lab P1S</a></li>
+        <li><a href="/split-stl-bambu-h2d.html">Bambu Lab H2D</a></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Creality</h3>
+      <ul>
+        <li><a href="/split-stl-ender-3.html">Creality Ender 3</a></li>
+        <li><a href="/split-stl-creality-k1c.html">Creality K1C</a></li>
+        <li><a href="/split-stl-creality-k1-max.html">Creality K1 Max</a></li>
+        <li><a href="/split-stl-creality-k2-plus.html">Creality K2 Plus</a></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Prusa</h3>
+      <ul>
+        <li><a href="/split-stl-prusa-mini.html">Original Prusa MINI+</a></li>
+        <li><a href="/split-stl-prusa-core-one.html">Prusa CORE One</a></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Elegoo</h3>
+      <ul>
+        <li><a href="/split-stl-elegoo-neptune-4-pro.html">Elegoo Neptune 4 Pro</a></li>
+        <li><a href="/split-stl-elegoo-centauri-carbon.html">Elegoo Centauri Carbon</a></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Anycubic</h3>
+      <ul>
+        <li><a href="/split-stl-anycubic-kobra-3.html">Anycubic Kobra 3</a></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Flashforge</h3>
+      <ul>
+        <li><a href="/split-stl-flashforge-adventurer-5m.html">Flashforge Adventurer 5M</a></li>
+      </ul>
+    </div>
+  </div>
+  <p><a href="/printer-bed-sizes.html">Bed sizes for every popular printer →</a></p>
 
   <footer>
     <a href="/">← Back to PrintSlice</a>
