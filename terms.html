@@ -22,183 +22,165 @@
 <link rel="icon" href="/favicon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-<style>
-  :root{
-    --accent:#124559; --accent-hover:#0d3546; --accent-soft:rgba(18,69,89,.14);
-    --ink:#01161e; --ink-soft:#3d5560; --ink-faint:#6b8791;
-    --bg:#e3ecda; --paper:#f8fbf0; --paper-soft:#dbe6d1;
-    --line:rgba(1,22,30,.13); --line-strong:rgba(1,22,30,.24);
-    --radius:5px; --radius-lg:7px;
-    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin:0; padding:0; }
-  body{
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-    color:var(--ink);
-    background:var(--bg);
-    min-height:100vh;
-  }
-  a{ color:var(--accent-hover); }
-  a:hover{ color:var(--accent); }
-  .wrap{ max-width:760px; margin:0 auto; padding:32px 20px 80px; }
-  .nav{ display:flex; align-items:center; flex-wrap:wrap; row-gap:10px; margin-bottom:40px; }
-  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink); }
-  .brand-icon{
-    width:32px; height:32px; flex:none;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .brand-name{ font-weight:800; font-size:14px; letter-spacing:.06em; text-transform:uppercase; }
-  .nav-links{ display:flex; flex-wrap:wrap; flex-basis:100%; justify-content:flex-end; gap:8px 16px; font-size:12px; }
-  .nav-links a{ color:var(--ink-soft); text-decoration:none; font-weight:700; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
-  .nav-links a:hover{ color:var(--ink); }
-  h1{ font-size:30px; margin:0 0 10px; letter-spacing:-.01em; }
-  .lede{ color:var(--ink-soft); font-size:15px; margin:0 0 40px; line-height:1.6; }
-  .legal{
-    border:1px solid var(--line-strong); border-radius:var(--radius-lg); background:var(--paper);
-    padding:32px 34px;
-  }
-  .legal h2{ font-size:16.5px; margin:28px 0 10px; color:var(--ink); }
-  .legal h2:first-child{ margin-top:0; }
-  .legal h3{ font-size:14.5px; margin:20px 0 8px; color:var(--ink); }
-  .legal p{ font-size:14px; color:var(--ink-soft); line-height:1.7; margin:0 0 12px; }
-  .legal ul{ margin:0 0 12px; padding-left:20px; }
-  .legal li{ font-size:14px; color:var(--ink-soft); line-height:1.7; margin-bottom:6px; }
-  .legal strong{ color:var(--ink); }
-  .updated{ font-size:12.5px; color:var(--ink-faint); margin:0 0 28px; font-family:var(--mono); }
-  footer{ margin-top:48px; text-align:center; font-size:13px; color:var(--ink-faint); }
-  footer a{ color:var(--ink-faint); }
-</style>
+<meta name="theme-color" content="#0c1117">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
-<div class="wrap">
-  <div class="nav">
-    <a class="brand" href="/">
-      <div class="brand-icon">
-        <img src="/logo-icon.png" alt="PrintSlice logo" width="24" height="24">
+<a class="skip" href="#main">Skip to content</a>
+<header class="mast">
+  <a class="wordmark" href="/" aria-label="PrintSlice home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><rect x="21.5" y="2" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="2" y="21.5" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="21.5" y="21.5" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><path d="M20 1.5v37M1.5 20h37" stroke="#2c5682" stroke-width="1.1" stroke-linecap="round"/><rect x="15.6" y="15.6" width="8.8" height="8.8" rx="1.5" transform="rotate(45 20 20)" fill="#4a90d9" stroke="#1a344e" stroke-width=".5"/></svg><span>PrintSlice</span></a>
+  <nav class="mast-nav" aria-label="Main">
+    <a href="/printer-bed-sizes.html">Printer guides</a>
+    <a href="/help.html">Help</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/app.html?login=1">Log In</a>
+  </nav>
+  <a class="button small" href="/app.html">Start Free Trial</a>
+</header>
+
+<main id="main">
+  <div class="head">
+    <h1 class="display" data-rise>Terms &amp; Conditions</h1>
+    <p class="lede" data-rise style="--i:1">The rules for using PrintSlice. By using the app or subscribing, you agree to these terms.</p>
+  </div>
+
+  <div class="doc">
+    <aside class="doc-aside">
+      <nav class="index" aria-label="Contents" data-toc hidden></nav>
+    </aside>
+    <div class="doc-body">
+      <div class="legal">
+        <p class="updated">Last updated: 21 October 2026</p>
+
+        <h2>1. The Service</h2>
+        <p>PrintSlice is a browser-based software tool that helps users split large 3D models into smaller, printer-sized parts and generate connector geometry such as pins, sockets, tabs, dovetails, and other joining features.</p>
+        <p>Unless otherwise stated, model processing takes place locally within your browser. We do not upload, store, or access your 3D model files on our servers.</p>
+
+        <h2>2. Accounts and Subscriptions</h2>
+        <p>Access to certain features of PrintSlice may require a paid subscription.</p>
+        <p>Subscriptions are currently billed at £3.99 GBP per month through our payment provider, Stripe. If you're outside the UK, the price may be shown and charged in your local currency at an equivalent amount; the exact amount is shown at checkout before you confirm. Subscriptions renew automatically unless cancelled before the next billing date.</p>
+        <p>You may cancel your subscription at any time through the billing management section of the application. Cancellation will take effect at the end of your current billing period.</p>
+        <p>Except where required by law, subscription fees are non-refundable and we do not provide refunds or credits for unused subscription periods. Nothing in these Terms affects your statutory rights as a consumer.</p>
+
+        <h3>Free model and free trial</h3>
+        <p>You can use some features of PrintSlice, such as uploading, splitting and previewing models, without an account, subscription or trial. Downloading the resulting files requires an account. Each new account may download the files for one model free of charge (its &ldquo;free model&rdquo;); downloading files for any other model requires an active free trial or paid subscription.</p>
+        <p>New customers may start a 7-day free trial of PrintSlice (14 days if you joined through a friend's referral link &mdash; see &ldquo;Referrals and discount codes&rdquo; below; references to the 7-day trial in these Terms then mean 14 days). To start a trial you must provide valid payment card details, which are collected and processed by Stripe &mdash; we never see or store your full card details ourselves.</p>
+        <p>You will not be charged during the 7-day trial. <strong>Unless you cancel before the trial ends, your card will automatically be charged £3.99 GBP at the end of the trial, and your subscription will then continue and renew monthly at that price until you cancel.</strong></p>
+        <p>You can cancel at any time during the trial through the billing management section of the application. If you cancel before the trial ends, you will not be charged and will no longer be able to download files once the trial period ends.</p>
+        <p>The free trial is available once per customer. We may decline, end, or reverse a trial where we reasonably believe it is being used to obtain free access repeatedly, including through multiple accounts, different email addresses, or different payment methods belonging to the same person.</p>
+        <p>If your payment fails when the trial ends, your subscription may be suspended or cancelled and your access to paid features may stop until payment is successfully made.</p>
+        <p>We may also offer beta access, promotional access, or complimentary subscriptions at our discretion. Such access may be modified, limited, converted to a paid subscription, or withdrawn at any time with reasonable notice where practical.</p>
+
+        <h3 id="referrals">Referrals and discount codes</h3>
+        <p><strong>Give a week, get a week.</strong> Subscribers can share a personal referral link. A new customer who signs up through it gets a 14-day free trial instead of 7 days. When that customer's first payment succeeds, the subscriber who shared the link receives a credit worth one week of the subscription (currently £0.92), applied automatically to their next bill. Credits have no cash value, can't be transferred, and are lost if the subscriber's account is closed. You can't refer yourself or accounts you control, and we may withhold or reverse credits we reasonably believe were obtained this way.</p>
+        <p><strong>Discount codes.</strong> We and our affiliates may share promotional codes, which can be applied at checkout or through a creator's link. Each code's discount and any limits are shown at checkout before you pay. Codes can't be exchanged for cash and may be withdrawn at any time. Only one code can be used per subscription.</p>
+        <p><strong>Affiliates.</strong> Creators who promote PrintSlice in return for commission do so under our separate <a href="/affiliates.html#terms">affiliate terms</a>.</p>
+
+        <h2>3. Eligibility</h2>
+        <p>You must be at least 18 years old to create an account, start a free trial, subscribe, or otherwise use PrintSlice. Parental or guardian permission is not a substitute.</p>
+        <p>By using PrintSlice, you confirm that you are 18 or over and have the legal capacity to agree to these Terms. We may close any account where we learn that the holder is under 18.</p>
+
+        <h2>4. Acceptable Use</h2>
+        <p>You agree not to:</p>
+        <ul>
+          <li>Use the service with files you do not have permission to use, modify, or reproduce.</li>
+          <li>Share account credentials to avoid subscription fees.</li>
+          <li>Attempt to bypass, disable, or interfere with subscription or payment systems.</li>
+          <li>Create multiple accounts to obtain more than one free model or free trial.</li>
+          <li>Reverse-engineer, copy, extract, or reproduce the software, algorithms, or geometry-generation systems for commercial or competitive purposes.</li>
+          <li>Interfere with the operation, security, or availability of the service.</li>
+          <li>Use the service for unlawful activities.</li>
+        </ul>
+
+        <h2>5. Ownership of Content</h2>
+        <p>You retain ownership of all files, models, and content you process using PrintSlice.</p>
+        <p>PrintSlice does not claim ownership of your models or generated outputs.</p>
+        <p>Because model processing occurs locally within your browser, we do not receive or store your model files unless explicitly stated otherwise.</p>
+
+        <h2>6. Intellectual Property</h2>
+        <p>All rights, title, and interest in the PrintSlice software, branding, user interface, algorithms, connector-generation systems, website content, and related intellectual property remain the property of PrintSlice and its owners.</p>
+        <p>These Terms grant you a limited right to use the service and do not transfer ownership of any part of the PrintSlice platform.</p>
+
+        <h2>7. Beta and Early Access Features</h2>
+        <p>Certain features may be released as alpha, beta, preview, or early-access functionality.</p>
+        <p>These features may contain bugs, incomplete functionality, unexpected behaviour, or performance issues. Features may be modified, restricted, replaced, or removed at any time without notice.</p>
+        <p>By using beta features, you acknowledge that they are provided for testing and evaluation purposes.</p>
+
+        <h2>8. No Warranty on Print Results</h2>
+        <p>PrintSlice uses automated geometry-processing methods to generate split models and connector systems.</p>
+        <p>While we strive to produce high-quality outputs, we do not guarantee that:</p>
+        <ul>
+          <li>Generated files will always be error-free.</li>
+          <li>Connectors will fit perfectly on every printer, material, or machine setup.</li>
+          <li>Every model is suitable for splitting.</li>
+          <li>Outputs will always be printable or successful.</li>
+        </ul>
+        <p>You are responsible for reviewing generated files before manufacturing or printing them.</p>
+        <p>The service is provided "as is" and "as available" without warranties of any kind, whether express or implied.</p>
+
+        <h2>9. Service Availability</h2>
+        <p>We do not guarantee uninterrupted, secure, or error-free operation of the service.</p>
+        <p>We may suspend, modify, restrict, or discontinue parts of the service at any time for maintenance, updates, security reasons, technical issues, or business reasons.</p>
+
+        <h2>10. Limitation of Liability</h2>
+        <p>To the fullest extent permitted by law, PrintSlice and its operators shall not be liable for any indirect, incidental, consequential, special, or punitive damages arising from use of the service.</p>
+        <p>This includes, but is not limited to:</p>
+        <ul>
+          <li>Failed prints</li>
+          <li>Wasted materials</li>
+          <li>Lost production time</li>
+          <li>Business interruption</li>
+          <li>Lost profits</li>
+          <li>Data loss</li>
+        </ul>
+        <p>Our total liability for any claim relating to the service shall not exceed the total amount paid by you to PrintSlice during the three (3) months immediately preceding the claim.</p>
+
+        <h2>11. Changes to the Service or Terms</h2>
+        <p>We may update these Terms, modify service features, or change subscription pricing from time to time.</p>
+        <p>Material changes will be reflected by updating the "Last Updated" date at the top of these Terms.</p>
+        <p>For significant pricing changes, we will make reasonable efforts to provide advance notice before the changes take effect.</p>
+        <p>Continued use of the service after updated Terms become effective constitutes acceptance of those changes.</p>
+
+        <h2>12. Termination</h2>
+        <p>We may suspend or terminate access to the service if you violate these Terms or engage in abusive, fraudulent, or harmful activity.</p>
+        <p>You may stop using the service and cancel your subscription at any time.</p>
+        <p>Termination does not affect any rights or obligations that arose before termination.</p>
+
+        <h2>13. Privacy</h2>
+        <p>Your use of PrintSlice is also governed by our <a href="/privacy.html">Privacy Policy</a>.</p>
+
+        <h2>14. Governing Law</h2>
+        <p>These Terms shall be governed by and interpreted in accordance with the laws of England and Wales.</p>
+        <p>Any dispute arising from or relating to these Terms or the use of the service shall be subject to the exclusive jurisdiction of the courts of England and Wales.</p>
+
+        <h2>15. Contact</h2>
+        <p>If you have any questions regarding these Terms, please contact us through the <a href="/contact.html">PrintSlice contact page</a> or by email at <a href="mailto:printsliceapp@gmail.com">printsliceapp@gmail.com</a>.</p>
       </div>
-      <span class="brand-name">PrintSlice</span>
-    </a>
-    <div class="nav-links">
-      <a href="/app.html?login=1">Log In</a>
-      <a href="/help.html">Help</a>
-      <a href="/contact.html">Contact</a>
-      <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a>
-      <a href="/privacy.html">Privacy</a>
     </div>
   </div>
+</main>
 
-  <h1>Terms &amp; Conditions</h1>
-  <p class="lede">The rules for using PrintSlice. By using the app or subscribing, you agree to these terms.</p>
-
-  <div class="legal">
-    <p class="updated">Last updated: 16 October 2026</p>
-
-    <h2>1. The Service</h2>
-    <p>PrintSlice is a browser-based software tool that helps users split large 3D models into smaller, printer-sized parts and generate connector geometry such as pins, sockets, tabs, dovetails, and other joining features.</p>
-    <p>Unless otherwise stated, model processing takes place locally within your browser. We do not upload, store, or access your 3D model files on our servers.</p>
-
-    <h2>2. Accounts and Subscriptions</h2>
-    <p>Access to certain features of PrintSlice may require a paid subscription.</p>
-    <p>Subscriptions are currently billed at £3.99 GBP per month through our payment provider, Stripe. If you're outside the UK, the price may be shown and charged in your local currency at an equivalent amount; the exact amount is shown at checkout before you confirm. Subscriptions renew automatically unless cancelled before the next billing date.</p>
-    <p>You may cancel your subscription at any time through the billing management section of the application. Cancellation will take effect at the end of your current billing period.</p>
-    <p>Except where required by law, subscription fees are non-refundable and we do not provide refunds or credits for unused subscription periods. Nothing in these Terms affects your statutory rights as a consumer.</p>
-
-    <h3>Free model and free trial</h3>
-    <p>You can use some features of PrintSlice, such as uploading, splitting and previewing models, without an account, subscription or trial. Downloading the resulting files requires an account. Each new account may download the files for one model free of charge (its &ldquo;free model&rdquo;); downloading files for any other model requires an active free trial or paid subscription.</p>
-    <p>New customers may start a 7-day free trial of PrintSlice. To start a trial you must provide valid payment card details, which are collected and processed by Stripe &mdash; we never see or store your full card details ourselves.</p>
-    <p>You will not be charged during the 7-day trial. <strong>Unless you cancel before the trial ends, your card will automatically be charged £3.99 GBP at the end of the trial, and your subscription will then continue and renew monthly at that price until you cancel.</strong></p>
-    <p>You can cancel at any time during the trial through the billing management section of the application. If you cancel before the trial ends, you will not be charged and will no longer be able to download files once the trial period ends.</p>
-    <p>The free trial is available once per customer. We may decline, end, or reverse a trial where we reasonably believe it is being used to obtain free access repeatedly, including through multiple accounts, different email addresses, or different payment methods belonging to the same person.</p>
-    <p>If your payment fails when the trial ends, your subscription may be suspended or cancelled and your access to paid features may stop until payment is successfully made.</p>
-    <p>We may also offer beta access, promotional access, or complimentary subscriptions at our discretion. Such access may be modified, limited, converted to a paid subscription, or withdrawn at any time with reasonable notice where practical.</p>
-
-    <h2>3. Eligibility</h2>
-    <p>You must be at least 18 years old to create an account, start a free trial, subscribe, or otherwise use PrintSlice. Parental or guardian permission is not a substitute.</p>
-    <p>By using PrintSlice, you confirm that you are 18 or over and have the legal capacity to agree to these Terms. We may close any account where we learn that the holder is under 18.</p>
-
-    <h2>4. Acceptable Use</h2>
-    <p>You agree not to:</p>
-    <ul>
-      <li>Use the service with files you do not have permission to use, modify, or reproduce.</li>
-      <li>Share account credentials to avoid subscription fees.</li>
-      <li>Attempt to bypass, disable, or interfere with subscription or payment systems.</li>
-      <li>Create multiple accounts to obtain more than one free model or free trial.</li>
-      <li>Reverse-engineer, copy, extract, or reproduce the software, algorithms, or geometry-generation systems for commercial or competitive purposes.</li>
-      <li>Interfere with the operation, security, or availability of the service.</li>
-      <li>Use the service for unlawful activities.</li>
-    </ul>
-
-    <h2>5. Ownership of Content</h2>
-    <p>You retain ownership of all files, models, and content you process using PrintSlice.</p>
-    <p>PrintSlice does not claim ownership of your models or generated outputs.</p>
-    <p>Because model processing occurs locally within your browser, we do not receive or store your model files unless explicitly stated otherwise.</p>
-
-    <h2>6. Intellectual Property</h2>
-    <p>All rights, title, and interest in the PrintSlice software, branding, user interface, algorithms, connector-generation systems, website content, and related intellectual property remain the property of PrintSlice and its owners.</p>
-    <p>These Terms grant you a limited right to use the service and do not transfer ownership of any part of the PrintSlice platform.</p>
-
-    <h2>7. Beta and Early Access Features</h2>
-    <p>Certain features may be released as alpha, beta, preview, or early-access functionality.</p>
-    <p>These features may contain bugs, incomplete functionality, unexpected behaviour, or performance issues. Features may be modified, restricted, replaced, or removed at any time without notice.</p>
-    <p>By using beta features, you acknowledge that they are provided for testing and evaluation purposes.</p>
-
-    <h2>8. No Warranty on Print Results</h2>
-    <p>PrintSlice uses automated geometry-processing methods to generate split models and connector systems.</p>
-    <p>While we strive to produce high-quality outputs, we do not guarantee that:</p>
-    <ul>
-      <li>Generated files will always be error-free.</li>
-      <li>Connectors will fit perfectly on every printer, material, or machine setup.</li>
-      <li>Every model is suitable for splitting.</li>
-      <li>Outputs will always be printable or successful.</li>
-    </ul>
-    <p>You are responsible for reviewing generated files before manufacturing or printing them.</p>
-    <p>The service is provided "as is" and "as available" without warranties of any kind, whether express or implied.</p>
-
-    <h2>9. Service Availability</h2>
-    <p>We do not guarantee uninterrupted, secure, or error-free operation of the service.</p>
-    <p>We may suspend, modify, restrict, or discontinue parts of the service at any time for maintenance, updates, security reasons, technical issues, or business reasons.</p>
-
-    <h2>10. Limitation of Liability</h2>
-    <p>To the fullest extent permitted by law, PrintSlice and its operators shall not be liable for any indirect, incidental, consequential, special, or punitive damages arising from use of the service.</p>
-    <p>This includes, but is not limited to:</p>
-    <ul>
-      <li>Failed prints</li>
-      <li>Wasted materials</li>
-      <li>Lost production time</li>
-      <li>Business interruption</li>
-      <li>Lost profits</li>
-      <li>Data loss</li>
-    </ul>
-    <p>Our total liability for any claim relating to the service shall not exceed the total amount paid by you to PrintSlice during the three (3) months immediately preceding the claim.</p>
-
-    <h2>11. Changes to the Service or Terms</h2>
-    <p>We may update these Terms, modify service features, or change subscription pricing from time to time.</p>
-    <p>Material changes will be reflected by updating the "Last Updated" date at the top of these Terms.</p>
-    <p>For significant pricing changes, we will make reasonable efforts to provide advance notice before the changes take effect.</p>
-    <p>Continued use of the service after updated Terms become effective constitutes acceptance of those changes.</p>
-
-    <h2>12. Termination</h2>
-    <p>We may suspend or terminate access to the service if you violate these Terms or engage in abusive, fraudulent, or harmful activity.</p>
-    <p>You may stop using the service and cancel your subscription at any time.</p>
-    <p>Termination does not affect any rights or obligations that arose before termination.</p>
-
-    <h2>13. Privacy</h2>
-    <p>Your use of PrintSlice is also governed by our <a href="/privacy.html">Privacy Policy</a>.</p>
-
-    <h2>14. Governing Law</h2>
-    <p>These Terms shall be governed by and interpreted in accordance with the laws of England and Wales.</p>
-    <p>Any dispute arising from or relating to these Terms or the use of the service shall be subject to the exclusive jurisdiction of the courts of England and Wales.</p>
-
-    <h2>15. Contact</h2>
-    <p>If you have any questions regarding these Terms, please contact us through the <a href="/contact.html">PrintSlice contact page</a> or by email at <a href="mailto:printsliceapp@gmail.com">printsliceapp@gmail.com</a>.</p>
+<footer class="foot">
+  <div class="foot-close">
+    <p class="foot-line display">Stop designing around your bed size.</p>
+    <a class="button" href="/app.html">Start Free Trial</a>
   </div>
+  <nav class="foot-nav" aria-label="Footer">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/printer-bed-sizes.html">Printer guides</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/help.html">Help</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/affiliates.html">Affiliates</a>
+    <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a>
+  </nav>
+  <div class="foot-legal"><span>© 2026 PrintSlice</span><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a><a href="/early-access.html">Early access</a><span class="foot-lang" data-lang-slot></span></div>
+</footer>
 
-  <footer>
-    <a href="/">← Back to PrintSlice</a>
-  </footer>
-</div>
-
-
+<script src="/site.js" defer></script>
 <script src="/consent.js" defer></script>
 </body></html>

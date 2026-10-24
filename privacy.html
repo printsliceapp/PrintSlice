@@ -22,139 +22,116 @@
 <link rel="icon" href="/favicon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-<style>
-  :root{
-    --accent:#124559; --accent-hover:#0d3546; --accent-soft:rgba(18,69,89,.14);
-    --ink:#01161e; --ink-soft:#3d5560; --ink-faint:#6b8791;
-    --bg:#e3ecda; --paper:#f8fbf0; --paper-soft:#dbe6d1;
-    --line:rgba(1,22,30,.13); --line-strong:rgba(1,22,30,.24);
-    --radius:5px; --radius-lg:7px;
-    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin:0; padding:0; }
-  body{
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-    color:var(--ink);
-    background:var(--bg);
-    min-height:100vh;
-  }
-  a{ color:var(--accent-hover); }
-  a:hover{ color:var(--accent); }
-  .wrap{ max-width:760px; margin:0 auto; padding:32px 20px 80px; }
-  .nav{ display:flex; align-items:center; flex-wrap:wrap; row-gap:10px; margin-bottom:40px; }
-  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink); }
-  .brand-icon{
-    width:32px; height:32px; flex:none;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .brand-name{ font-weight:800; font-size:14px; letter-spacing:.06em; text-transform:uppercase; }
-  .nav-links{ display:flex; flex-wrap:wrap; flex-basis:100%; justify-content:flex-end; gap:8px 16px; font-size:12px; }
-  .nav-links a{ color:var(--ink-soft); text-decoration:none; font-weight:700; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
-  .nav-links a:hover{ color:var(--ink); }
-  h1{ font-size:30px; margin:0 0 10px; letter-spacing:-.01em; }
-  .lede{ color:var(--ink-soft); font-size:15px; margin:0 0 40px; line-height:1.6; }
-  .legal{
-    border:1px solid var(--line-strong); border-radius:var(--radius-lg); background:var(--paper);
-    padding:32px 34px;
-  }
-  .legal h2{ font-size:16.5px; margin:28px 0 10px; color:var(--ink); }
-  .legal h2:first-child{ margin-top:0; }
-  .legal h3{ font-size:14.5px; margin:20px 0 8px; color:var(--ink); }
-  .legal p{ font-size:14px; color:var(--ink-soft); line-height:1.7; margin:0 0 12px; }
-  .legal ul{ margin:0 0 12px; padding-left:20px; }
-  .legal li{ font-size:14px; color:var(--ink-soft); line-height:1.7; margin-bottom:6px; }
-  .legal strong{ color:var(--ink); }
-  .legal table{ width:100%; border-collapse:collapse; margin:0 0 14px; font-size:13.5px; }
-  .legal th{ text-align:left; color:var(--ink); padding:8px 10px; border-bottom:1px solid var(--line-strong); font-size:12px; text-transform:uppercase; letter-spacing:.03em; }
-  .legal td{ padding:8px 10px; border-bottom:1px solid var(--line); color:var(--ink-soft); vertical-align:top; }
-  .updated{ font-size:12.5px; color:var(--ink-faint); margin:0 0 28px; font-family:var(--mono); }
-  footer{ margin-top:48px; text-align:center; font-size:13px; color:var(--ink-faint); }
-  footer a{ color:var(--ink-faint); }
-</style>
+<meta name="theme-color" content="#0c1117">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
-<div class="wrap">
-  <div class="nav">
-    <a class="brand" href="/">
-      <div class="brand-icon">
-        <img src="/logo-icon.png" alt="PrintSlice logo" width="24" height="24">
+<a class="skip" href="#main">Skip to content</a>
+<header class="mast">
+  <a class="wordmark" href="/" aria-label="PrintSlice home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><rect x="21.5" y="2" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="2" y="21.5" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="21.5" y="21.5" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><path d="M20 1.5v37M1.5 20h37" stroke="#2c5682" stroke-width="1.1" stroke-linecap="round"/><rect x="15.6" y="15.6" width="8.8" height="8.8" rx="1.5" transform="rotate(45 20 20)" fill="#4a90d9" stroke="#1a344e" stroke-width=".5"/></svg><span>PrintSlice</span></a>
+  <nav class="mast-nav" aria-label="Main">
+    <a href="/printer-bed-sizes.html">Printer guides</a>
+    <a href="/help.html">Help</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/app.html?login=1">Log In</a>
+  </nav>
+  <a class="button small" href="/app.html">Start Free Trial</a>
+</header>
+
+<main id="main">
+  <div class="head">
+    <h1 class="display" data-rise>Privacy Policy</h1>
+    <p class="lede" data-rise style="--i:1">What we collect, why, and how it's handled when you use PrintSlice.</p>
+  </div>
+
+  <div class="doc">
+    <aside class="doc-aside">
+      <nav class="index" aria-label="Contents" data-toc hidden></nav>
+    </aside>
+    <div class="doc-body">
+      <div class="legal">
+        <p class="updated">Last updated: 21 October 2026</p>
+
+        <h2>1. Your models never leave your device</h2>
+        <p>PrintSlice's core function — loading an STL file, splitting it, generating connectors, and exporting the result — runs entirely inside your own browser. Your 3D model files are never uploaded to, transmitted to, or stored on our servers at any point. We have no access to them.</p>
+
+        <h2>2. What we do collect</h2>
+        <p>Beyond your model files, running the service does involve some personal data. Here's exactly what, and why:</p>
+        <table data-stack>
+          <tr><th>Data</th><th>Why we collect it</th><th>Where it's stored</th></tr>
+          <tr><td>Email address, password (hashed)</td><td>To create and secure your account</td><td>Supabase (our auth/database provider)</td></tr>
+          <tr><td>Subscription status, Stripe customer/subscription IDs</td><td>To know whether your account has an active paid subscription</td><td>Supabase, kept in sync by Stripe's webhook</td></tr>
+          <tr><td>Payment card details</td><td>To process your subscription payment</td><td>Stripe only — we never see or store full card details ourselves</td></tr>
+          <tr><td>Name, email, message (if you use the contact form)</td><td>To respond to your enquiry</td><td>Netlify Forms</td></tr>
+          <tr><td>Name, email, channel link, audience size and answers (if you apply to the affiliate programme)</td><td>To review your application and, if accepted, run the programme and pay commission</td><td>Netlify Forms</td></tr>
+          <tr><td>Which referral link or discount code you signed up through, and (for referral links) which subscriber shared it</td><td>To apply the discount or longer trial, credit the person who referred you, and pay affiliates their commission</td><td>Stripe</td></tr>
+          <tr><td>How you use the site — pages visited, clicks, scrolling, and recordings of on-page activity (anything you type into a form is hidden)</td><td>To see where people get stuck so we can improve the site — <strong>only if you accept analytics cookies</strong></td><td>Microsoft Clarity</td></tr>
+          <tr><td>Error reports (message, stack trace, mesh statistics like triangle counts — never your model geometry itself)</td><td>To diagnose bugs in the connector-placement engine</td><td>Supabase</td></tr>
+        </table>
+        <p>We use your browser's local storage to keep you signed in between visits, to remember whether you've dismissed certain on-page notices, and to remember your cookie choice and language choice. This stays on your own device.</p>
+        <p>If you arrive through a referral or creator link (printslice.co.uk/r/&hellip;), we set a <code>printslice_ref</code> cookie that holds only that link's code, for up to 30 days, so the discount or longer trial it offers is applied when you check out. It isn't used for tracking or advertising.</p>
+        <h3>Translation</h3>
+        <p>We show the site in your browser's language. For Portuguese, Spanish, German, French, Italian, Dutch, Polish and Japanese, we use our own translations, which run entirely in your browser and send nothing anywhere. For any other language, we use Google Translate: the text of the page you're viewing is sent to Google to be translated, and a <code>googtrans</code> cookie remembers the language. It's a functional cookie that only stores the language code. Google processes this under its own <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>. What you type into forms, your email address and your 3D models are never sent to Google. You can switch back to English at any time with the language menu in the bottom-right corner. Our Terms and this Privacy Policy are only provided in English.</p>
+        <h3>Analytics cookies</h3>
+        <p>If you click <strong>Accept</strong> on our cookie banner, we load Microsoft Clarity, which uses cookies to record how you interact with our pages (clicks, scrolling, mouse movement) so we can see where the site is confusing or broken. Text you type into forms, including your email and password, is masked and never recorded. If you click <strong>Decline</strong>, Clarity is never loaded. Microsoft processes this data under its own <a href="https://privacy.microsoft.com/privacystatement" target="_blank" rel="noopener">privacy statement</a>.</p>
+        <p>You can change your choice at any time: <a href="#" onclick="window.printsliceCookieSettings && window.printsliceCookieSettings(); return false;">change cookie settings</a>.</p>
+
+        <h2>3. Third parties we use</h2>
+        <p>We rely on a small number of service providers to run PrintSlice, each of whom processes data on our behalf under their own privacy and security terms:</p>
+        <ul>
+          <li><strong>Supabase</strong> — authentication and database hosting.</li>
+          <li><strong>Stripe</strong> — subscription billing and payment processing.</li>
+          <li><strong>Netlify</strong> — website hosting, serverless functions, and form submissions.</li>
+          <li><strong>Microsoft Clarity</strong> — site analytics and session recordings, only if you accept analytics cookies.</li>
+          <li><strong>Resend</strong> — sending account-related emails.</li>
+          <li><strong>Reddit</strong> — the Reddit Pixel, which measures whether people who see our Reddit ads go on to sign up.</li>
+          <li><strong>Google</strong> — Google Translate, only when your browser's language isn't one we translate ourselves.</li>
+        </ul>
+        <p>We don't sell your personal data to anyone, and we don't share it with third parties for their own marketing purposes.</p>
+
+        <h2>4. How long we keep data</h2>
+        <p>We keep account and subscription data for as long as your account exists, so we can maintain your access and billing history. Contact, early-access and affiliate-application form submissions are kept long enough to respond to and process your request. You can ask us to delete your data at any time (see Section 6).</p>
+
+        <h2>5. Legal basis for processing</h2>
+        <p>We process your data to perform our contract with you (running your account and subscription), to comply with legal obligations (such as billing records), and, in limited cases like error reports, on the basis of our legitimate interest in keeping the service working correctly. Analytics cookies (Microsoft Clarity) are only used with your consent, which you can withdraw at any time.</p>
+
+        <h2>6. Your rights</h2>
+        <p>Depending on where you live, you may have rights to access, correct, delete, or export the personal data we hold about you, or to object to or restrict certain processing. To exercise any of these, contact us using the details below and we'll respond as required by applicable law. If you're in the UK or EU, you also have the right to complain to your local data protection authority (in the UK, the <a href="https://ico.org.uk" target="_blank" rel="noopener">Information Commissioner's Office</a>) if you believe we've mishandled your data.</p>
+
+        <h2>7. Children's privacy</h2>
+        <p>PrintSlice isn't directed at children, and you must be at least 18 to create an account or use the service, per our <a href="/terms.html">Terms &amp; Conditions</a>. We don't knowingly collect personal data from children. If you think someone under 18 has signed up, please <a href="/contact.html">contact us</a> so we can remove the account.</p>
+
+        <h2>8. Changes to this policy</h2>
+        <p>We may update this policy from time to time, reflected by the "Last updated" date above. Continued use of the service after a change means you accept the updated policy.</p>
+
+        <h2>9. Contact</h2>
+        <p>Questions about this policy or your data? Reach out via the <a href="/contact.html">contact page</a> or email <a href="mailto:printsliceapp@gmail.com">printsliceapp@gmail.com</a>.</p>
       </div>
-      <span class="brand-name">PrintSlice</span>
-    </a>
-    <div class="nav-links">
-      <a href="/app.html?login=1">Log In</a>
-      <a href="/help.html">Help</a>
-      <a href="/contact.html">Contact</a>
-      <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a>
-      <a href="/terms.html">Terms</a>
     </div>
   </div>
+</main>
 
-  <h1>Privacy Policy</h1>
-  <p class="lede">What we collect, why, and how it's handled when you use PrintSlice.</p>
-
-  <div class="legal">
-    <p class="updated">Last updated: 7 October 2026</p>
-
-    <h2>1. Your models never leave your device</h2>
-    <p>PrintSlice's core function — loading an STL file, splitting it, generating connectors, and exporting the result — runs entirely inside your own browser. Your 3D model files are never uploaded to, transmitted to, or stored on our servers at any point. We have no access to them.</p>
-
-    <h2>2. What we do collect</h2>
-    <p>Beyond your model files, running the service does involve some personal data. Here's exactly what, and why:</p>
-    <table>
-      <tr><th>Data</th><th>Why we collect it</th><th>Where it's stored</th></tr>
-      <tr><td>Email address, password (hashed)</td><td>To create and secure your account</td><td>Supabase (our auth/database provider)</td></tr>
-      <tr><td>Subscription status, Stripe customer/subscription IDs</td><td>To know whether your account has an active paid subscription</td><td>Supabase, kept in sync by Stripe's webhook</td></tr>
-      <tr><td>Payment card details</td><td>To process your subscription payment</td><td>Stripe only — we never see or store full card details ourselves</td></tr>
-      <tr><td>Name, email, message (if you use the contact form)</td><td>To respond to your enquiry</td><td>Netlify Forms</td></tr>
-      <tr><td>How you use the site — pages visited, clicks, scrolling, and recordings of on-page activity (anything you type into a form is hidden)</td><td>To see where people get stuck so we can improve the site — <strong>only if you accept analytics cookies</strong></td><td>Microsoft Clarity</td></tr>
-      <tr><td>Error reports (message, stack trace, mesh statistics like triangle counts — never your model geometry itself)</td><td>To diagnose bugs in the connector-placement engine</td><td>Supabase</td></tr>
-    </table>
-    <p>We use your browser's local storage to keep you signed in between visits, to remember whether you've dismissed certain on-page notices, and to remember your cookie choice and language choice. This stays on your own device.</p>
-    <h3>Translation</h3>
-    <p>We show the site in your browser's language. For Portuguese, Spanish, German, French, Italian, Dutch, Polish and Japanese, we use our own translations, which run entirely in your browser and send nothing anywhere. For any other language, we use Google Translate: the text of the page you're viewing is sent to Google to be translated, and a <code>googtrans</code> cookie remembers the language. It's a functional cookie that only stores the language code. Google processes this under its own <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>. What you type into forms, your email address and your 3D models are never sent to Google. You can switch back to English at any time with the language menu in the bottom-right corner. Our Terms and this Privacy Policy are only provided in English.</p>
-    <h3>Analytics cookies</h3>
-    <p>If you click <strong>Accept</strong> on our cookie banner, we load Microsoft Clarity, which uses cookies to record how you interact with our pages (clicks, scrolling, mouse movement) so we can see where the site is confusing or broken. Text you type into forms, including your email and password, is masked and never recorded. If you click <strong>Decline</strong>, Clarity is never loaded. Microsoft processes this data under its own <a href="https://privacy.microsoft.com/privacystatement" target="_blank" rel="noopener">privacy statement</a>.</p>
-    <p>You can change your choice at any time: <a href="#" onclick="window.printsliceCookieSettings && window.printsliceCookieSettings(); return false;">change cookie settings</a>.</p>
-
-    <h2>3. Third parties we use</h2>
-    <p>We rely on a small number of service providers to run PrintSlice, each of whom processes data on our behalf under their own privacy and security terms:</p>
-    <ul>
-      <li><strong>Supabase</strong> — authentication and database hosting.</li>
-      <li><strong>Stripe</strong> — subscription billing and payment processing.</li>
-      <li><strong>Netlify</strong> — website hosting, serverless functions, and form submissions.</li>
-      <li><strong>Microsoft Clarity</strong> — site analytics and session recordings, only if you accept analytics cookies.</li>
-      <li><strong>Resend</strong> — sending account-related emails.</li>
-      <li><strong>Reddit</strong> — the Reddit Pixel, which measures whether people who see our Reddit ads go on to sign up.</li>
-      <li><strong>Google</strong> — Google Translate, only when your browser's language isn't one we translate ourselves.</li>
-    </ul>
-    <p>We don't sell your personal data to anyone, and we don't share it with third parties for their own marketing purposes.</p>
-
-    <h2>4. How long we keep data</h2>
-    <p>We keep account and subscription data for as long as your account exists, so we can maintain your access and billing history. Contact and early-access form submissions are kept long enough to respond to and process your request. You can ask us to delete your data at any time (see Section 6).</p>
-
-    <h2>5. Legal basis for processing</h2>
-    <p>We process your data to perform our contract with you (running your account and subscription), to comply with legal obligations (such as billing records), and, in limited cases like error reports, on the basis of our legitimate interest in keeping the service working correctly. Analytics cookies (Microsoft Clarity) are only used with your consent, which you can withdraw at any time.</p>
-
-    <h2>6. Your rights</h2>
-    <p>Depending on where you live, you may have rights to access, correct, delete, or export the personal data we hold about you, or to object to or restrict certain processing. To exercise any of these, contact us using the details below and we'll respond as required by applicable law. If you're in the UK or EU, you also have the right to complain to your local data protection authority (in the UK, the <a href="https://ico.org.uk" target="_blank" rel="noopener">Information Commissioner's Office</a>) if you believe we've mishandled your data.</p>
-
-    <h2>7. Children's privacy</h2>
-    <p>PrintSlice isn't directed at children, and you must be at least 18 to create an account or use the service, per our <a href="/terms.html">Terms &amp; Conditions</a>. We don't knowingly collect personal data from children. If you think someone under 18 has signed up, please <a href="/contact.html">contact us</a> so we can remove the account.</p>
-
-    <h2>8. Changes to this policy</h2>
-    <p>We may update this policy from time to time, reflected by the "Last updated" date above. Continued use of the service after a change means you accept the updated policy.</p>
-
-    <h2>9. Contact</h2>
-    <p>Questions about this policy or your data? Reach out via the <a href="/contact.html">contact page</a> or email <a href="mailto:printsliceapp@gmail.com">printsliceapp@gmail.com</a>.</p>
+<footer class="foot">
+  <div class="foot-close">
+    <p class="foot-line display">Stop designing around your bed size.</p>
+    <a class="button" href="/app.html">Start Free Trial</a>
   </div>
+  <nav class="foot-nav" aria-label="Footer">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/printer-bed-sizes.html">Printer guides</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/help.html">Help</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/affiliates.html">Affiliates</a>
+    <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a>
+  </nav>
+  <div class="foot-legal"><span>© 2026 PrintSlice</span><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a><a href="/early-access.html">Early access</a><span class="foot-lang" data-lang-slot></span></div>
+</footer>
 
-  <footer>
-    <a href="/">← Back to PrintSlice</a>
-  </footer>
-</div>
-
-
+<script src="/site.js" defer></script>
 <script src="/consent.js" defer></script>
 </body></html>

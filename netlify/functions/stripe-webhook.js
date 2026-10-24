@@ -60,6 +60,38 @@ exports.handler = async (event) => {
       current_period_end: periodEndRaw ? new Date(periodEndRaw * 1000).toISOString() : null,
       updated_at: new Date().toISOString(),
     });
+    await rewardReferrer(subscription);
+  }
+
+  // "Give a week, get a week": when a subscription that came from a friend's
+  // link (metadata.referred_by, set at checkout) first becomes active — i.e.
+  // the trial ended and the first payment went through — the friend who
+  // shared the link gets a week of credit (92p, a week of £3.99/month) off
+  // their next bill. Flagged on the subscription so it only ever happens once.
+  const WEEK_CREDIT_PENCE = Math.round(399 * 12 / 52);
+  async function rewardReferrer(subscription){
+    const referrerId = subscription.metadata?.referred_by;
+    if (!referrerId || subscription.status !== 'active' || subscription.metadata?.referral_rewarded) return;
+    const { data: referrer } = await supabaseAdmin
+      .from('subscriptions')
+      .select('stripe_customer_id')
+      .eq('user_id', referrerId)
+      .maybeSingle();
+    if (referrer?.stripe_customer_id && referrer.stripe_customer_id !== subscription.customer){
+      try {
+        await stripe.customers.createBalanceTransaction(referrer.stripe_customer_id, {
+          amount: -WEEK_CREDIT_PENCE,
+          currency: 'gbp',
+          description: 'Referral reward: a free week for inviting a friend',
+          metadata: { referred_subscription: subscription.id },
+        });
+      } catch (err) {
+        // Don't fail the whole webhook (Stripe would retry it forever) —
+        // log it so the credit can be added by hand in the dashboard.
+        console.error('Referral credit failed for', referrer.stripe_customer_id, 'from', subscription.id, err.message);
+      }
+    }
+    await stripe.subscriptions.update(subscription.id, { metadata: { referral_rewarded: 'true' } });
   }
 
   try {

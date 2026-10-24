@@ -5,78 +5,63 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Page Not Found - PrintSlice</title>
 <meta name="robots" content="noindex">
+<meta name="theme-color" content="#0c1117">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
 <link rel="icon" href="/favicon-96.png" sizes="96x96" type="image/png">
 <link rel="icon" href="/favicon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<script>document.documentElement.classList.add('js')</script>
 <style>
-  :root{
-    --accent:#124559; --accent-hover:#0d3546;
-    --ink:#01161e; --ink-soft:#3d5560; --ink-faint:#6b8791;
-    --bg:#e3ecda; --paper:#f8fbf0;
-    --line:rgba(1,22,30,.13); --line-strong:rgba(1,22,30,.24);
-    --radius-lg:9px;
-    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin:0; padding:0; }
-  body{
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-    color:var(--ink);
-    background:var(--bg);
-    background-image:
-      linear-gradient(var(--line) 1px, transparent 1px),
-      linear-gradient(90deg, var(--line) 1px, transparent 1px);
-    background-size:64px 64px;
-    min-height:100vh;
-  }
-  a{ color:var(--accent-hover); }
-  a:hover{ color:var(--accent); }
-  .wrap{ max-width:560px; margin:0 auto; padding:32px 20px 80px; }
-  .nav{ display:flex; align-items:center; margin-bottom:64px; }
-  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink); }
-  .brand-icon{ width:32px; height:32px; flex:none; display:flex; align-items:center; justify-content:center; }
-  .brand-name{ font-weight:800; font-size:14px; letter-spacing:.06em; text-transform:uppercase; }
-  .card{
-    border:1px solid var(--line-strong); border-radius:var(--radius-lg); background:var(--paper);
-    padding:34px 28px; box-shadow:0 26px 54px -30px rgba(1,22,30,.3);
-  }
-  .code{ font-family:var(--mono); font-size:12px; font-weight:700; letter-spacing:.08em; color:var(--accent); margin:0 0 10px; }
-  h1{ font-size:30px; margin:0 0 10px; letter-spacing:-.01em; }
-  p{ color:var(--ink-soft); font-size:15px; line-height:1.6; margin:0 0 26px; }
-  .actions{ display:flex; gap:12px; flex-wrap:wrap; }
-  .btn{
-    display:inline-block; padding:13px 22px; font-family:var(--mono); font-size:12px; font-weight:700;
-    text-transform:uppercase; letter-spacing:.05em; text-decoration:none; border:1.5px solid var(--ink);
-  }
-  .btn-primary{ background:var(--ink); color:var(--paper); }
-  .btn-primary:hover{ background:var(--accent); border-color:var(--accent); color:var(--paper); }
-  .btn-outline{ color:var(--ink); }
-  .btn-outline:hover{ border-color:var(--accent); color:var(--accent); }
+  .lost{ min-height:calc(100svh - 96px); padding-bottom:clamp(48px, 8vw, 120px); align-items:center; }
+  .actions{ display:flex; flex-wrap:wrap; align-items:center; gap:16px 28px; margin-top:40px; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="nav">
-    <a class="brand" href="/">
-      <div class="brand-icon">
-        <img src="/logo-icon.png" alt="PrintSlice logo" width="24" height="24">
-      </div>
-      <span class="brand-name">PrintSlice</span>
-    </a>
-  </div>
+<a class="skip" href="#main">Skip to content</a>
+<header class="mast">
+  <a class="wordmark" href="/" aria-label="PrintSlice home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><rect x="21.5" y="2" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="2" y="21.5" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="21.5" y="21.5" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><path d="M20 1.5v37M1.5 20h37" stroke="#2c5682" stroke-width="1.1" stroke-linecap="round"/><rect x="15.6" y="15.6" width="8.8" height="8.8" rx="1.5" transform="rotate(45 20 20)" fill="#4a90d9" stroke="#1a344e" stroke-width=".5"/></svg><span>PrintSlice</span></a>
+  <nav class="mast-nav" aria-label="Main">
+    <a href="/printer-bed-sizes.html">Printer guides</a>
+    <a href="/help.html">Help</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/app.html?login=1">Log In</a>
+  </nav>
+  <a class="button small" href="/app.html">Start Free Trial</a>
+</header>
 
-  <div class="card">
-    <div class="code">ERROR 404</div>
-    <h1>This piece didn't fit.</h1>
-    <p>The page you're looking for doesn't exist or has moved. Head back to the homepage, or go straight to splitting your model.</p>
-    <div class="actions">
-      <a class="btn btn-primary" href="/app.html">Start Slicing</a>
-      <a class="btn btn-outline" href="/">Homepage</a>
-      <a class="btn btn-outline" href="/help.html">Help</a>
+<main id="main" class="split lost">
+  <div class="split-text">
+    <p class="label" data-rise>Error 404</p>
+    <h1 class="display" data-rise style="--i:1">This piece didn't fit.</h1>
+    <p class="lede" data-rise style="--i:2">The page you're looking for doesn't exist or has moved. Head back to the homepage, or go straight to splitting your model.</p>
+    <div class="actions" data-rise style="--i:3">
+      <a class="button" href="/app.html">Start Slicing</a>
+      <a href="/">Homepage</a>
+      <a href="/help.html">Help</a>
     </div>
   </div>
-</div>
-</body>
-</html>
+
+  <figure class="split-side plate" data-rise style="--i:2">
+    <svg viewBox="0 0 560 400" role="img" aria-label="Drawing of a 220 millimetre printer bed with one piece hanging over its right edge">
+      <defs>
+        <pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="#e8eef6" stroke-opacity=".07"/></pattern>
+        <pattern id="over" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#4a90d9"/><path d="M0 0V8" stroke="#111821" stroke-width="3"/></pattern>
+      </defs>
+      <rect x="60" y="56" width="275" height="275" fill="url(#grid)"/>
+      <rect x="60" y="56" width="275" height="275" fill="none" stroke="#e8eef6" stroke-width="1.5" stroke-dasharray="6 5"/>
+      <text x="60" y="44" fill="#e8eef6" font-size="13">Bed 220 × 220 mm</text>
+      <rect x="215" y="146" width="120" height="125" fill="#4a90d9"/>
+      <rect x="335" y="146" width="150" height="125" fill="url(#over)"/>
+      <text x="227" y="170" fill="#0c1117" font-size="13" font-weight="500">404</text>
+      <path d="M335 296V306M485 296V306M335 301H485" fill="none" stroke="#e8eef6" stroke-width="1.2"/>
+      <text x="410" y="324" fill="#e8eef6" font-size="13" text-anchor="middle">120 mm over</text>
+    </svg>
+    <figcaption><span>The page you asked for</span><span>Too big for this bed</span></figcaption>
+  </figure>
+</main>
+</body></html>

@@ -18,3 +18,10 @@
 # version of this (confirmed by direct testing: "Open the app" bounced back
 # to the marketing page instead of reaching the tool, since both it and
 # Pretty URLs' own canonicalization were racing for the same "/" path).
+
+# Referral and creator links: printslice.co.uk/r/MAKERJOE opens the app with
+# the code, which referrals.js remembers until checkout.
+[[redirects]]
+  from = "/r/:code"
+  to = "/app.html?ref=:code"
+  status = 302

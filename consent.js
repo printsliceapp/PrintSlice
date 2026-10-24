@@ -47,17 +47,19 @@
     var bar = document.createElement("div");
     bar.setAttribute("role", "dialog");
     bar.setAttribute("aria-label", "Cookie consent");
-    bar.style.cssText = "position:fixed;left:16px;right:16px;bottom:16px;z-index:9999;max-width:560px;margin:0 auto;" +
-      "background:#f8fbf0;color:#01161e;border:1px solid rgba(1,22,30,.24);border-radius:9px;" +
+    // Takes each page's own --bg/--ink and font where it defines them, so the
+    // banner matches whichever page it opens on.
+    bar.style.cssText = "position:fixed;left:12px;bottom:12px;z-index:9999;width:min(400px, calc(100% - 24px));" +
+      "background:var(--bg,#f8fbf0);color:var(--ink,#01161e);" +
       "box-shadow:0 18px 40px -16px rgba(1,22,30,.35);padding:16px 18px;" +
-      "font:13.5px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;";
+      "font-family:inherit;font-size:14px;line-height:1.5;";
     bar.innerHTML =
       '<p style="margin:0 0 12px">We\'d like to use analytics cookies (Microsoft Clarity) to see how people use PrintSlice, ' +
       'so we can fix what\'s confusing. Anything you type is hidden. ' +
-      '<a href="/privacy.html" style="color:#0d3546;text-decoration:underline">Privacy policy</a></p>' +
+      '<a href="/privacy.html" style="color:inherit;text-decoration:underline">Privacy policy</a></p>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-      '<button type="button" data-c="granted" style="cursor:pointer;border:none;border-radius:3px;padding:9px 16px;font-weight:700;font-size:12.5px;font-family:inherit;width:auto;margin:0;text-transform:none;letter-spacing:0;background:#01161e;color:#f8fbf0">Accept</button>' +
-      '<button type="button" data-c="denied" style="cursor:pointer;border:1px solid rgba(1,22,30,.24);border-radius:3px;padding:9px 16px;font-weight:700;font-size:12.5px;font-family:inherit;width:auto;margin:0;text-transform:none;letter-spacing:0;background:transparent;color:#01161e">Decline</button>' +
+      '<button type="button" data-c="granted" style="cursor:pointer;border:none;border-radius:0;min-height:40px;padding:0 16px;font-weight:500;font-size:14px;font-family:inherit;width:auto;margin:0;text-transform:none;letter-spacing:0;background:var(--ink,#01161e);color:var(--bg,#f8fbf0)">Accept</button>' +
+      '<button type="button" data-c="denied" style="cursor:pointer;border:none;border-radius:0;min-height:40px;padding:0 16px;font-weight:500;font-size:14px;font-family:inherit;width:auto;margin:0;text-transform:none;letter-spacing:0;background:var(--surface,rgba(1,22,30,.08));color:var(--ink,#01161e)">Decline</button>' +
       '</div>';
     bar.addEventListener("click", function(e){
       var c = e.target && e.target.getAttribute("data-c");

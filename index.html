@@ -16,6 +16,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="PrintSlice: a model split into four pieces that fit a printer bed">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0c1117">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
 <link rel="icon" href="/favicon-96.png" sizes="96x96" type="image/png">
@@ -23,167 +24,333 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<script>document.documentElement.classList.add('js')</script>
 
 <style>
+  /* Night-time control room in the logo's colours: deep slate, bone type, the logo's blue only where you act. */
   :root{
-    --paper:#e3ecda; --paper-2:#dbe6d1; --sheet:#f8fbf0;
-    --ink:#01161e; --ink-soft:#3d5560; --ink-faint:#6b8791;
-    --line:rgba(1,22,30,.13); --line-strong:rgba(1,22,30,.24);
-    --accent:#124559; --accent-soft:rgba(18,69,89,.14);
-    --blue:#0d3546; --blue-soft:rgba(13,53,70,.1);
-    --radius:3px; --radius-lg:4px;
-    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
-    --serif: 'Newsreader', Georgia, 'Iowan Old Style', serif;
+    --void:#0c1117; --deep:#111821; --raised:#18212d; --ink:#e8eef6; --muted:#a3b1c4;
+    --line:rgba(232,238,246,.1); --line-strong:rgba(232,238,246,.2);
+    --accent:#4a90d9; --accent-ink:#08101a; --slate:#4e5f76; --slate-deep:#2c3849; --cut:#2c5682;
+    --ok:#3ddc97; --warn:#e8b04a; --bad:#ff5c74;
+    /* consent.js and i18n.js read these */
+    --bg:#0c1117; --surface:#18212d;
+    --sans:'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono:'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --nav:'Lato', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius:4px;
+
+    --step-mono: 0.75rem;
+    --step-small: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+    --step-body: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+    --step-lead: clamp(1.1875rem, 1.05rem + 0.6vw, 1.5rem);
+    --step-title: clamp(2.5rem, 1.2rem + 4.2vw, 5.5rem);
+    --step-display: clamp(3.5rem, 1rem + 7.6vw, 9.5rem);
+
+    --pad:clamp(20px, 4vw, 64px);
+    --gap:clamp(112px, 14vw, 220px);
+    --ease-out:cubic-bezier(0.22, 1, 0.36, 1);
+    --t-press:140ms; --t-hover:180ms;
   }
-  * { box-sizing:border-box; }
-  html{ scroll-behavior:smooth; }
-  html, body{ margin:0; padding:0; }
-  body{
-    font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-    color:var(--ink); background:var(--paper);
-    background-image:
-      linear-gradient(var(--line) 1px, transparent 1px),
-      linear-gradient(90deg, var(--line) 1px, transparent 1px);
-    background-size:64px 64px;
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; -webkit-text-size-adjust:100%; }
+  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } }
+  body{ margin:0; background:var(--void); color:var(--ink); font:400 var(--step-body)/1.55 var(--sans); -webkit-font-smoothing:antialiased; }
+  img, svg, canvas{ display:block; max-width:100%; }
+  a{ color:var(--accent); text-decoration:none; transition:color var(--t-hover) ease; }
+  @media (hover:hover) and (pointer:fine){ a:hover{ color:var(--ink); } }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+  ::selection{ background:var(--accent); color:var(--accent-ink); }
+  h1, h2, h3, p, dl, dd, ul, ol, figure{ margin:0; }
+  h1, h2, h3{ text-wrap:balance; }
+  p{ text-wrap:pretty; }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .skip{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .skip:focus{ width:auto; height:auto; clip:auto; left:12px; top:12px; z-index:60; background:var(--accent); color:var(--accent-ink); padding:12px 16px; }
+
+  .display{ font-weight:700; letter-spacing:-0.045em; line-height:0.9; }
+  .title{ font-size:var(--step-title); font-weight:700; letter-spacing:-0.04em; line-height:0.95; }
+  .mono{ font-family:var(--mono); font-size:var(--step-mono); font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
+  .mono b, .mono .n{ color:var(--accent); font-weight:500; }
+
+  .button{
+    display:inline-flex; align-items:center; justify-content:center; min-height:54px; padding:0 28px; border:0; border-radius:var(--radius);
+    background:var(--accent); color:var(--accent-ink); font:500 1.0625rem/1 var(--sans); white-space:nowrap; cursor:pointer;
+    transition:transform var(--t-press) var(--ease-out), background-color var(--t-hover) ease, box-shadow var(--t-hover) ease;
   }
-  a{ color:var(--blue); text-decoration:none; }
-  a:hover{ color:var(--accent); }
-  .wrap{ max-width:1160px; margin:0 auto; padding:0 28px; }
+  .button:active{ transform:scale(0.97); }
+  @media (hover:hover) and (pointer:fine){ .button:hover{ color:var(--accent-ink); background:#7fb2ea; box-shadow:0 0 0 6px rgba(74,144,217,.12); } }
+  .button.small{ min-height:40px; padding:0 18px; font-size:0.9375rem; }
+  .button.ghost{ background:transparent; color:var(--ink); box-shadow:inset 0 0 0 1px var(--line-strong); }
+  @media (hover:hover) and (pointer:fine){ .button.ghost:hover{ background:var(--raised); color:var(--ink); box-shadow:inset 0 0 0 1px var(--accent); } }
 
-  .reveal{ opacity:0; transform:translateY(18px); transition:opacity .55s cubic-bezier(.16,.8,.3,1), transform .55s cubic-bezier(.16,.8,.3,1); transition-delay:calc(var(--reveal-i,0) * 80ms); }
-  .reveal.is-visible{ opacity:1; transform:translateY(0); }
-  @media (prefers-reduced-motion: reduce){ .reveal{ opacity:1 !important; transform:none !important; transition:none !important; } }
-
-  header{
-    position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between;
-    padding:18px 28px; background:rgba(244,240,230,.9); backdrop-filter:blur(10px);
-    border-bottom:1.5px solid var(--ink);
+  /* ------- Top bar, on a scrim over the field ------- */
+  .bar{
+    position:fixed; inset:0 0 auto 0; z-index:40; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:24px;
+    height:72px; padding:0 var(--pad); background:linear-gradient(var(--void) 0%, rgba(12,17,23,.72) 55%, rgba(12,17,23,0));
+    border-bottom:1px solid transparent; transition:background-color 300ms ease, border-color 300ms ease;
   }
-  .brand{ display:flex; align-items:center; gap:10px; color:var(--ink); }
-  .brand-icon{ width:26px; height:26px; flex:none; display:flex; align-items:center; justify-content:center; }
-  .brand-name{ font-family:Georgia, serif; font-weight:700; font-size:13px; letter-spacing:.1em; text-transform:uppercase; }
-  .nav-links{ display:flex; align-items:center; gap:30px; font-family:var(--mono); font-size:12px; }
-  .nav-links a.nlink{ color:var(--ink-soft); font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
-  .nav-links a.nlink:hover{ color:var(--accent); }
-  .nav-actions{ display:flex; align-items:center; gap:20px; }
-  .nav-login{ color:var(--ink-soft); font-weight:600; font-family:var(--mono); font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
-  .nav-login:hover{ color:var(--ink); }
-  .nav-cta{ background:var(--ink); color:var(--sheet) !important; padding:9px 18px; font-family:var(--mono); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; transition:background .15s ease; }
-  .nav-cta:hover{ background:var(--accent) !important; }
+  /* Once the page moves, the bar gets a solid backing so nothing reads through it. */
+  .bar.is-solid{ background:rgba(12,17,23,.9); border-bottom-color:var(--line); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); }
+  .wordmark{ display:flex; align-items:center; gap:10px; color:var(--ink); font-weight:700; font-size:1.25rem; letter-spacing:-0.03em; }
+  .wordmark svg{ width:28px; height:28px; }
+  .bar-nav{ display:flex; justify-content:center; gap:30px; }
+  .bar-nav a, .bar-end > a:not(.button){ color:var(--muted); font:700 0.8125rem/1 var(--nav); letter-spacing:.08em; text-transform:uppercase; }
+  .bar .button{ font-family:var(--nav); font-weight:700; }
+  @media (hover:hover) and (pointer:fine){ .bar-nav a:hover, .bar-end > a:not(.button):hover{ color:var(--ink); } }
+  .bar-end{ display:flex; align-items:center; gap:22px; }
 
-  section{ padding:112px 0; }
-  .eyebrow{ font-family:var(--serif); font-style:italic; font-size:14px; font-weight:500; letter-spacing:.01em; color:var(--accent); margin:0 0 18px; }
-  h1{ font-family:var(--serif); font-size:60px; line-height:1.06; letter-spacing:-.015em; margin:0 0 24px; font-weight:500; }
-  h2{ font-family:var(--serif); font-size:33px; letter-spacing:-.01em; margin:0; font-weight:500; }
-  em.accent-em{ font-style:italic; color:var(--accent); }
-  .lede{ font-size:17.5px; color:var(--ink-soft); line-height:1.65; max-width:500px; margin:0 0 34px; }
-  .cta-row{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
-  .btn{ display:inline-flex; align-items:center; gap:8px; padding:15px 26px; font-family:var(--mono); font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; border:1.5px solid var(--ink); transition:transform .15s ease, background .15s ease, color .15s ease; }
-  .btn-primary{ background:var(--ink); color:var(--sheet) !important; }
-  .btn-primary:hover{ background:var(--accent); border-color:var(--accent); }
-  .btn-outline{ background:transparent; color:var(--ink) !important; }
-  .btn-outline:hover{ border-color:var(--accent); color:var(--accent) !important; }
-  .cta-note{ font-family:var(--mono); font-size:11.5px; color:var(--ink-faint); margin-top:18px; }
+  /* ------- The story: a pinned stage, six chapters ------- */
+  .story{ position:relative; }
+  .story.is-pinned{ height:700vh; height:700svh; }
+  .stage{ position:relative; height:100vh; height:100svh; overflow:hidden; background:var(--void); }
+  .story.is-pinned .stage{ position:sticky; top:0; }
+  #field{ position:absolute; inset:0; width:100%; height:100%; opacity:0; transition:opacity 1200ms var(--ease-out); }
+  .stage.is-ready #field{ opacity:1; }
+  .stage-plan{ position:absolute; inset:0; display:none; place-items:center; padding:14vh 11vw 14vh 46vw; }
+  .stage.no-gl .stage-plan{ display:grid; }
+  .stage.no-gl #field{ display:none; }
+  .stage-plan svg{ width:100%; max-width:760px; height:auto; }
+  .scrim{
+    position:absolute; inset:0; pointer-events:none;
+    background:
+      linear-gradient(90deg, rgba(12,17,23,.94) 0%, rgba(12,17,23,.78) 30%, rgba(12,17,23,0) 58%),
+      linear-gradient(0deg, rgba(12,17,23,.85) 0%, rgba(12,17,23,0) 22%),
+      linear-gradient(270deg, rgba(12,17,23,.88) 0%, rgba(12,17,23,.55) 7%, rgba(12,17,23,0) 14%);
+  }
+  .stage-status{ position:absolute; left:var(--pad); bottom:32px; display:flex; align-items:center; gap:12px; transition:opacity 600ms ease; }
+  .stage-status::before{ content:""; width:44px; height:1px; background:var(--accent); transform-origin:left; animation:loading 1.2s var(--ease-out) infinite; }
+  .stage.is-ready .stage-status{ opacity:0; }
+  @keyframes loading{ from{ transform:scaleX(0); } to{ transform:scaleX(1); opacity:0; } }
 
-  .sheet{ background:var(--sheet); border:1.5px solid var(--ink); position:relative; }
-  .crop{ position:absolute; width:16px; height:16px; }
-  .crop::before, .crop::after{ content:""; position:absolute; background:var(--ink); }
-  .crop.tl{ top:-1px; left:-1px; } .crop.tr{ top:-1px; right:-1px; } .crop.bl{ bottom:-1px; left:-1px; } .crop.br{ bottom:-1px; right:-1px; }
-  .crop::before{ width:16px; height:2px; top:0; left:0; }
-  .crop::after{ width:2px; height:16px; top:0; left:0; }
-  .crop.tr::before{ left:auto; right:0; } .crop.tr::after{ left:auto; right:0; }
-  .crop.bl::before{ top:auto; bottom:0; } .crop.bl::after{ top:auto; bottom:0; }
-  .crop.br::before{ top:auto; bottom:0; left:auto; right:0; } .crop.br::after{ top:auto; bottom:0; left:auto; right:0; }
+  .chapters{ position:absolute; inset:72px 0 0 0; pointer-events:none; }
+  .chapter{
+    position:absolute; left:var(--pad); top:50%; width:min(560px, 44vw); translate:0 -50%;
+    opacity:0; will-change:opacity, transform;
+  }
+  .story.is-pinned .chapter.is-on{ pointer-events:auto; }
+  .chapter-hero{ width:min(760px, 52vw); }
+  .chapter .mono.label{ display:flex; align-items:center; gap:12px; margin-bottom:22px; }
+  .chapter .mono.label::after{ content:""; width:40px; height:1px; background:var(--line-strong); }
+  .chapter h1{ font-size:min(var(--step-display), 13.5vh); }
+  .chapter h1 .line{ display:block; }
+  .chapter .lede{ font-size:var(--step-lead); line-height:1.4; max-width:30ch; margin-top:28px; color:var(--ink); }
+  .chapter .cta{ display:flex; flex-wrap:wrap; align-items:center; gap:14px 22px; margin-top:36px; }
+  .chapter .note{ margin-top:18px; letter-spacing:0.1em; line-height:1.7; }
+  .chapter h2{ font-size:min(var(--step-title), 9vh); }
+  .chapter h2 + p{ margin-top:24px; max-width:36ch; font-size:var(--step-lead); line-height:1.42; }
+  .chapter p + p{ margin-top:12px; max-width:36ch; color:var(--muted); }
+  .readout{ margin-top:30px; padding-top:16px; border-top:1px solid var(--line); text-transform:none; letter-spacing:0.02em; font-size:0.8125rem; line-height:1.9; color:var(--muted); }
+  .readout b{ color:var(--ink); }
+  .readout .ok{ color:var(--ok); }
+  .readout .warn{ color:var(--warn); }
 
-  /* Hero */
-  .hero{ display:grid; grid-template-columns:1.05fr 1fr; gap:56px; align-items:center; padding-top:66px; }
-  .hero-3d{ aspect-ratio:1/1; position:relative; overflow:hidden; }
-  .hero-3d video{ display:block; width:100%; height:100%; object-fit:cover; }
+  .rail{ position:absolute; right:calc(var(--pad) - 14px); top:50%; translate:0 -50%; display:flex; flex-direction:column; gap:6px; padding:12px 14px; background:rgba(12,17,23,.78); border:1px solid var(--line); border-radius:var(--radius); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+  .rail button{ text-shadow:0 0 10px var(--void), 0 0 2px var(--void);
+    display:flex; align-items:center; justify-content:flex-end; gap:10px; min-height:32px; padding:0; border:0; background:none; cursor:pointer;
+    font:500 var(--step-mono)/1 var(--mono); letter-spacing:.14em; color:var(--muted); opacity:.55; transition:opacity var(--t-hover) ease, color var(--t-hover) ease;
+  }
+  .rail button::after{ content:""; width:18px; height:1px; background:currentColor; transition:width 300ms var(--ease-out); }
+  .rail button[aria-current="step"]{ color:var(--accent); opacity:1; }
+  .rail button[aria-current="step"]::after{ width:40px; }
+  @media (hover:hover) and (pointer:fine){ .rail button:hover{ opacity:1; } }
+  .progress{ position:absolute; left:0; right:0; bottom:0; height:1px; background:var(--line); }
+  .progress::after{ content:""; position:absolute; inset:0; background:var(--accent); transform-origin:left; transform:scaleX(var(--progress, 0)); }
+  .cue{ position:absolute; left:50%; bottom:28px; translate:-50% 0; display:flex; flex-direction:column; align-items:center; gap:10px; opacity:calc(1 - var(--progress, 0) * 12); }
+  .cue::after{ content:""; width:1px; height:36px; background:linear-gradient(var(--accent), transparent); }
 
-  /* Product demo */
-  .demo-panel{ position:relative; overflow:hidden; }
-  .demo-panel img{ width:100%; height:auto; display:block; filter:sepia(.08) contrast(1.02); }
-  .demo-tag{ position:absolute; font-family:var(--mono); font-size:10.5px; color:var(--ink); background:var(--sheet); border:1px solid var(--ink); padding:5px 9px; white-space:nowrap; }
-  .demo-tag::before{ content:""; position:absolute; width:6px; height:6px; background:var(--accent); left:-3px; top:50%; transform:translateY(-50%); }
+  /* No pinning (reduced motion or no JS): the hero, then the field's last frame, then the chapters in order. */
+  .story:not(.is-pinned) .stage{ height:auto; overflow:visible; display:flex; flex-direction:column; }
+  .story:not(.is-pinned) .chapters{ display:contents; }
+  .story:not(.is-pinned) .chapter{ order:2; margin:0 var(--pad); }
+  .story:not(.is-pinned) .chapter-hero{ order:0; }
+  .story:not(.is-pinned) #field{ position:relative; height:70vh; height:70svh; order:1; }
+  .story:not(.is-pinned) .stage-plan{ position:relative; display:grid; padding:24px var(--pad) 72px; order:1; }
+  .story.is-static .stage:not(.no-gl) .stage-plan{ display:none; }
+  .story:not(.is-pinned) .scrim, .story:not(.is-pinned) .rail, .story:not(.is-pinned) .cue, .story:not(.is-pinned) .progress, .story:not(.is-pinned) .stage-status{ display:none; }
+  .story:not(.is-pinned) .chapter{ position:static; opacity:1; translate:none; width:auto; max-width:760px; padding:72px 0; border-top:1px solid var(--line); }
+  .story:not(.is-pinned) .chapter-hero{ border-top:0; padding-top:140px; }
 
-  .section-head{ max-width:640px; margin:0 0 52px; }
-  .section-head p{ font-size:16px; color:var(--ink-soft); line-height:1.6; margin:14px 0 0; }
+  /* ------- Sections after the story ------- */
+  .section{ padding:var(--gap) var(--pad) 0; }
+  .section-head{ display:grid; grid-template-columns:repeat(12, minmax(0, 1fr)); gap:16px 24px; align-items:end; margin-bottom:clamp(48px, 6vw, 88px); }
+  .section-head .mono{ grid-column:1 / -1; }
+  .section-head h2{ grid-column:1 / 10; }
 
-  /* How it works — FIG style */
-  .steps{ display:flex; align-items:flex-start; gap:0; position:relative; margin-top:56px; }
-  .steps::before{ content:""; position:absolute; top:22px; left:38px; right:38px; height:0; border-top:1.5px dashed var(--line-strong); }
-  .step{ flex:1; text-align:center; padding:0 16px; position:relative; }
-  .step-num{ width:44px; height:44px; border-radius:50%; border:1.5px solid var(--ink); background:var(--sheet); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-family:var(--mono); font-weight:700; font-size:14px; position:relative; z-index:1; }
-  .step h3{ font-size:18px; margin:0 0 10px; font-family:var(--serif); font-weight:700; }
-  .step p{ font-size:14px; color:var(--ink-soft); line-height:1.6; margin:0; }
+  /* The real app: a split, and a close-up of a connector it placed, side by side at one size. */
+  .shots{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:24px; }
+  .shots figure{ margin:0; }
+  .shot-frame{ overflow:hidden; background:var(--deep); border:1px solid var(--line); border-radius:6px; }
+  .shot-frame img{ display:block; width:100%; height:auto; aspect-ratio:4 / 3; object-fit:cover; }
+  /* Keep the app's sidebar and the split model in frame; centre on the connector. */
+  .shot-main img{ object-position:0% 50%; }
+  .shot-inset img{ object-position:34% 52%; }
+  @media (prefers-reduced-motion: no-preference){
+    .js .shot-frame{ clip-path:inset(0 0 100% 0 round 6px); transition:clip-path 1200ms cubic-bezier(0.76, 0, 0.24, 1); transition-delay:calc(var(--i, 0) * 160ms); }
+    .js .shot-frame img{ transform:scale(1.08); transition:transform 1800ms var(--ease-out); transition-delay:calc(var(--i, 0) * 160ms); }
+    .js .is-in > .shot-frame{ clip-path:inset(0 0 0 0 round 6px); }
+    .js .is-in > .shot-frame img{ transform:none; }
+  }
 
-  /* Connector feature */
-  .connector-grid{ display:grid; grid-template-columns:1fr 1fr; gap:56px; align-items:center; }
-  .connector-stage{ aspect-ratio:16/10; position:relative; display:flex; align-items:center; justify-content:center; }
-  .conn-piece{ width:130px; height:150px; border:1.5px solid var(--ink); background:var(--sheet); position:relative; transition:transform 1.1s cubic-bezier(.16,.8,.3,1); }
-  .conn-piece.left{ transform:translateX(-28px); }
-  .conn-piece.right{ transform:translateX(28px); }
-  .connector-stage.joined .conn-piece.left{ transform:translateX(-2px); }
-  .connector-stage.joined .conn-piece.right{ transform:translateX(2px); }
-  .conn-tab{ position:absolute; right:-22px; top:50%; transform:translateY(-50%); width:26px; height:34px; background:var(--accent); }
-  .conn-socket{ position:absolute; left:-1px; top:50%; transform:translateY(-50%); width:18px; height:38px; border:1.5px solid var(--ink); border-left:none; background:var(--paper); }
-  .connector-copy h2{ margin-bottom:24px; }
-  .connector-copy p{ font-size:16px; color:var(--ink-soft); line-height:1.65; margin:0 0 28px; max-width:440px; }
-  .connector-list{ list-style:none; padding:0; margin:0; font-size:14px; color:var(--ink-soft); }
-  .connector-list li{ padding:10px 0 10px 24px; position:relative; border-top:1px solid var(--line); }
-  .connector-list li:first-child{ border-top:none; }
-  .connector-list li::before{ content:"—"; position:absolute; left:0; color:var(--accent); font-weight:700; }
+  /* Connector types: two halves slide together and apart while in view. */
+  .joints{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:24px; margin-bottom:64px; }
+  .joint{ margin:0; padding:20px 20px 16px; background:var(--deep); border:1px solid var(--line); border-radius:var(--radius); }
+  .joint svg{ width:100%; height:auto; overflow:visible; }
+  .joint figcaption{ margin-top:12px; text-align:center; }
+  .joint .j-left{ transform:translateX(8px); }
+  .joint .j-right{ transform:translateX(-8px); }
+  @media (prefers-reduced-motion: no-preference){
+    .joint .j-left{ transform:none; animation:j-left 4.2s cubic-bezier(0.65, 0, 0.35, 1) infinite paused; animation-delay:calc(var(--i, 0) * 350ms); }
+    .joint .j-right{ transform:none; animation:j-right 4.2s cubic-bezier(0.65, 0, 0.35, 1) infinite paused; animation-delay:calc(var(--i, 0) * 350ms); }
+    .joint.is-in .j-left, .joint.is-in .j-right{ animation-play-state:running; }
+  }
+  @keyframes j-left{ 0%, 16%{ transform:none; } 40%, 76%{ transform:translateX(8px); } 100%{ transform:none; } }
+  @keyframes j-right{ 0%, 16%{ transform:none; } 40%, 76%{ transform:translateX(-8px); } 100%{ transform:none; } }
 
-  /* Before/after */
-  .compare{ display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--ink); border:1.5px solid var(--ink); }
-  .compare-card{ background:var(--sheet); padding:28px; min-height:300px; display:flex; flex-direction:column; }
-  .compare-label{ font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; font-weight:700; margin-bottom:24px; }
-  .compare-card.bad .compare-label{ color:var(--accent); }
-  .compare-card.good .compare-label{ color:var(--blue); }
-  .plate{ flex:1; border:1.5px dashed var(--line-strong); position:relative; display:flex; align-items:center; justify-content:center; }
-  .plate-model-big{ width:78%; height:78%; border:2px solid var(--accent); background:repeating-linear-gradient(45deg, var(--paper-2), var(--paper-2) 6px, var(--paper) 6px, var(--paper) 12px); }
-  .plate-grid{ width:74%; height:74%; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:6px; }
-  .plate-grid div{ border:1.5px solid var(--blue); background:var(--sheet); }
+  /* Spec: four facts, split by rules rather than boxed. */
+  .spec{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); border-top:1px solid var(--line-strong); }
+  .spec > div{ padding:28px 24px 8px 0; }
+  .spec > div + div{ padding-left:24px; border-left:1px solid var(--line); }
+  .spec h3{ font-size:1.375rem; font-weight:500; letter-spacing:-0.02em; line-height:1.2; margin-top:16px; }
+  .spec p:not(.mono){ margin-top:12px; color:var(--muted); font-size:1rem; }
+  .frag{ margin-top:24px; padding:14px; background:var(--deep); border:1px solid var(--line); border-radius:var(--radius); font:400 0.8125rem/1.7 var(--mono); color:var(--muted); }
+  .frag .row{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; }
+  .frag .cell{ display:block; margin-top:4px; padding:6px 8px; border:1px solid var(--line-strong); border-radius:var(--radius); color:var(--ink); }
+  .frag .ok{ color:var(--ok); }
+  .frag .chip{ display:inline-block; margin-top:10px; padding:4px 10px; border:1px solid var(--line-strong); border-radius:var(--radius); color:var(--ink); }
 
-  /* Pricing */
-  .pricing-card{ max-width:420px; margin:0 auto; background:var(--sheet); border:1.5px solid var(--ink); padding:44px 38px; text-align:center; }
-  .price{ font-family:var(--mono); font-size:44px; font-weight:700; letter-spacing:-.02em; margin:14px 0 4px; }
-  .price span{ font-size:13px; color:var(--ink-faint); font-family:var(--mono); font-weight:600; }
-  .pricing-list{ list-style:none; padding:0; margin:28px 0; text-align:left; font-size:14.5px; color:var(--ink-soft); }
-  .pricing-list li{ padding:9px 0 9px 24px; position:relative; }
-  .pricing-list li::before{ content:"—"; position:absolute; left:0; color:var(--accent); font-weight:700; }
-  .pricing-note{ font-size:12.5px; color:var(--ink-faint); margin-top:18px; font-family:var(--mono); }
+  /* Beds: one huge word and the printers people bring most. */
+  .beds{ display:grid; grid-template-columns:repeat(12, minmax(0, 1fr)); gap:24px; }
+  .beds-side{ grid-column:1 / 6; }
+  .beds-word{ font-size:clamp(3.5rem, 1.6rem + 5vw, 7rem); line-height:0.85; margin-left:-0.04em; }
+  .beds-side > p{ color:var(--muted); max-width:44ch; margin-top:24px; }
+  .beds-body{ grid-column:7 / 13; align-self:start; padding-top:12px; }
+  /* Every bed in the list, drawn to one scale; the outlines draw themselves in. */
+  .beds-plan{ margin:36px 0 0; padding:12px; background:var(--deep); border:1px solid var(--line); border-radius:var(--radius); }
+  .beds-plan svg{ width:100%; height:auto; }
+  .beds-plan text{ font-family:var(--mono); }
+  @media (prefers-reduced-motion: no-preference){
+    .js .beds-plan rect{ stroke-dasharray:1; stroke-dashoffset:1; transition:stroke-dashoffset 1400ms var(--ease-out); transition-delay:calc(var(--d) * 90ms + 200ms); }
+    .js .beds-plan path, .js .beds-plan text{ opacity:0; transition:opacity 600ms ease; transition-delay:calc(var(--d) * 90ms + 800ms); }
+    .js .beds-plan.is-in rect{ stroke-dashoffset:0; }
+    .js .beds-plan.is-in path, .js .beds-plan.is-in text{ opacity:1; }
+  }
+  .beds-body > p{ color:var(--muted); max-width:44ch; margin-bottom:28px; }
+  .bars details{ border-top:1px solid var(--line); }
+  .bars details:last-of-type{ border-bottom:1px solid var(--line); }
+  .bars summary{ display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:58px; cursor:pointer; list-style:none; font-weight:500; font-size:1.125rem; }
+  .bars summary::-webkit-details-marker{ display:none; }
+  .bars summary::after{ content:"+"; font:400 1.25rem/1 var(--mono); color:var(--muted); transition:transform 240ms var(--ease-out), color var(--t-hover) ease; }
+  .bars details[open] summary::after{ transform:rotate(45deg); color:var(--accent); }
+  .bars ul{ list-style:none; margin:0; padding:0 0 18px; }
+  .bars li{ display:flex; justify-content:space-between; gap:16px; padding:6px 0; }
+  .bars li span:last-child{ font:400 0.875rem/1.6 var(--mono); color:var(--muted); white-space:nowrap; }
+  .beds-more{ margin-top:28px; }
 
-  /* FAQ */
-  .faq{ max-width:740px; margin:0 auto; }
-  details{ border-top:1px solid var(--line-strong); padding:22px 0; }
-  details:last-child{ border-bottom:1px solid var(--line-strong); }
-  summary{ cursor:pointer; font-size:16px; font-weight:600; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:16px; font-family:var(--serif); }
-  summary::-webkit-details-marker{ display:none; }
-  summary::after{ content:"+"; font-family:var(--mono); font-size:20px; color:var(--ink-faint); transition:transform .2s ease; flex:none; }
-  details[open] summary::after{ transform:rotate(45deg); color:var(--accent); }
-  details p{ font-size:14.5px; color:var(--ink-soft); line-height:1.65; margin:16px 0 0; max-width:620px; }
+  /* Pricing: two plans side by side. */
+  .pricing{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); border-top:1px solid var(--line-strong); }
+  .plan{ display:flex; flex-direction:column; padding:36px 40px 40px 0; }
+  .plan + .plan{ padding-left:40px; border-left:1px solid var(--line-strong); }
+  .plan h3{ font-size:var(--step-title); font-weight:700; letter-spacing:-0.04em; line-height:0.95; }
+  .plan-pro h3{ color:var(--accent); }
+  .plan-for{ font-size:var(--step-lead); margin-top:20px; max-width:26ch; }
+  .plan-inc{ margin-top:18px; color:var(--muted); max-width:44ch; }
+  .plan-list{ list-style:none; padding:0; margin:20px 0 0; color:var(--muted); }
+  .plan-list li{ padding:8px 0; border-top:1px solid var(--line); }
+  .plan-foot{ margin-top:auto; padding-top:clamp(48px, 6vw, 88px); display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap; }
+  .price{ font-size:clamp(4rem, 2rem + 6vw, 8.5rem); font-weight:700; letter-spacing:-0.05em; line-height:0.8; font-variant-numeric:lining-nums; }
+  .price-wrap{ display:flex; align-items:flex-end; gap:10px; }
+  .per{ padding-bottom:0.25em; }
 
-  .final-cta{ text-align:center; }
-  .final-cta h2{ font-size:42px; margin:0 0 32px; }
-  .final-cta .cta-row{ justify-content:center; }
+  /* FAQ: answers as reading text. */
+  .faq-text{ columns:2; column-gap:64px; }
+  .faq-text p{ break-inside:avoid; margin-bottom:22px; max-width:46ch; color:var(--muted); }
+  .faq-text strong{ display:block; color:var(--ink); font-weight:500; margin-bottom:4px; }
 
-  footer{ border-top:1.5px solid var(--ink); padding:28px 0; }
-  .footer-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; font-family:var(--mono); font-size:11.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em; }
-  .footer-links{ display:flex; gap:22px; flex-wrap:wrap; }
-  .footer-links a{ color:var(--ink-soft); }
-  .footer-links a:hover{ color:var(--accent); }
+  .final{ padding:var(--gap) var(--pad); text-align:center; }
+  .final h2{ max-width:12ch; margin:0 auto; }
+  .final .button{ margin-top:44px; }
 
-  @media (max-width:900px){
-    .hero, .connector-grid{ grid-template-columns:1fr; }
-    .steps{ flex-direction:column; gap:36px; } .steps::before{ display:none; }
-    .compare{ grid-template-columns:1fr; }
-    h1{ font-size:36px; }
-    .final-cta h2{ font-size:28px; }
-    section{ padding:60px 0; }
-    .nav-links{ display:none; }
-    .demo-tag{ display:none; }
+  /* Footer */
+  .foot{ display:grid; grid-template-columns:repeat(12, minmax(0, 1fr)); gap:24px; padding:56px var(--pad) 28px; border-top:1px solid var(--line); }
+  .foot .wordmark{ grid-column:1 / 5; align-self:start; }
+  .foot-nav{ grid-column:5 / 9; display:grid; grid-template-columns:1fr 1fr; gap:10px 24px; align-content:start; }
+  .foot-nav a{ color:var(--ink); }
+  @media (hover:hover) and (pointer:fine){ .foot-nav a:hover{ color:var(--accent); } }
+  .foot-blocks{ grid-column:9 / 13; display:grid; gap:16px; align-content:start; color:var(--muted); font-size:var(--step-small); }
+  .foot-legal{ grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:center; gap:8px 24px; margin-top:48px; padding-top:20px; border-top:1px solid var(--line); }
+  .foot-legal a{ color:var(--muted); }
+  .foot-lang{ margin-left:auto; text-transform:none; letter-spacing:0; }
+
+  /* ------- Entrances ------- */
+  @media (prefers-reduced-motion: no-preference){
+    .js .chapter-hero .line{ opacity:0; transform:translateY(40%); animation:rise 900ms var(--ease-out) forwards; animation-delay:calc(var(--i) * 110ms + 900ms); }
+    .js .chapter-hero .rise{ opacity:0; animation:fade 900ms var(--ease-out) forwards; animation-delay:calc(var(--i) * 110ms + 1300ms); }
+    .js [data-reveal]{ opacity:0; transform:translateY(24px); transition:opacity 700ms var(--ease-out), transform 900ms var(--ease-out); transition-delay:calc(var(--i, 0) * 80ms); }
+    .js [data-reveal].is-in{ opacity:1; transform:none; }
+  }
+  @keyframes rise{ to{ opacity:1; transform:none; } }
+  @keyframes fade{ to{ opacity:1; } }
+
+  /* Short screens (laptops at 720 px): tighter spacing in the chapters. */
+  @media (max-height: 800px) and (min-width: 761px){
+    .chapter .mono.label{ margin-bottom:14px; }
+    .chapter .lede{ margin-top:18px; }
+    .chapter .cta{ margin-top:22px; }
+    .chapter h2 + p{ margin-top:16px; }
+    .readout{ margin-top:18px; padding-top:12px; }
+    .cue{ display:none; }
+  }
+
+  /* ------- Narrower screens ------- */
+  @media (max-width: 1100px){
+    .bar-nav{ gap:20px; }
+    .spec{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .spec > div:nth-child(3){ padding-left:0; border-left:0; }
+    .spec > div:nth-child(n + 3){ border-top:1px solid var(--line); }
+  }
+  @media (max-width: 900px){
+    .bar-nav{ display:none; }
+    .bar{ grid-template-columns:1fr auto; }
+    .beds-side, .beds-body{ grid-column:1 / -1; }
+    .beds-body{ padding-top:0; }
+    .section-head h2{ grid-column:1 / -1; }
+  }
+  @media (max-width: 760px){
+    .shots{ grid-template-columns:minmax(0, 1fr); gap:16px; }
+    .joints{ grid-template-columns:minmax(0, 1fr); gap:12px; }
+    .joint svg{ max-width:300px; margin:0 auto; display:block; }
+    .bar{ height:64px; padding:0 16px; }
+    .bar-end{ gap:14px; }
+    .scrim{ background:linear-gradient(0deg, rgba(12,17,23,.97) 0%, rgba(12,17,23,.9) 42%, rgba(12,17,23,0) 66%), linear-gradient(rgba(12,17,23,.7), rgba(12,17,23,0) 18%); }
+    .chapter, .chapter-hero{ left:20px; right:20px; width:auto; top:auto; bottom:44px; translate:none; }
+    .chapter h1{ font-size:clamp(3rem, 14vw, 4.5rem); }
+    .chapter .lede{ margin-top:18px; font-size:1.0625rem; }
+    .chapter .cta{ margin-top:22px; }
+    .chapter .cta .button{ width:100%; }
+    .chapter .note{ font-size:0.6875rem; }
+    .chapter h2{ font-size:clamp(2.25rem, 10vw, 3rem); }
+    .chapter h2 + p{ font-size:1.0625rem; margin-top:14px; }
+    .chapter .mono.label{ margin-bottom:14px; }
+    .readout{ margin-top:18px; padding-top:10px; font-size:0.75rem; line-height:1.75; }
+    .rail{ display:none; }
+    .cue{ display:none; }
+    .stage-plan{ padding:84px 20px 46vh; }
+    .story:not(.is-pinned) .chapter{ padding:48px 0; }
+    .section{ padding-left:20px; padding-right:20px; }
+    .spec{ grid-template-columns:minmax(0, 1fr); }
+    .spec > div, .spec > div + div{ padding:24px 0 8px; border-left:0; }
+    .spec > div + div{ border-top:1px solid var(--line); }
+    .pricing{ grid-template-columns:minmax(0, 1fr); }
+    .plan, .plan + .plan{ min-height:0; padding:32px 0 40px; border-left:0; }
+    .plan + .plan{ border-top:1px solid var(--line-strong); }
+    .plan-pro{ order:-1; }
+    .plan-foot .button{ width:100%; }
+    .faq-text{ columns:1; }
+    .final .button{ width:100%; }
+    .foot .wordmark, .foot-nav, .foot-blocks{ grid-column:1 / -1; }
+    .foot-lang{ margin-left:0; flex-basis:100%; }
   }
 </style>
 <script type="application/ld+json">
@@ -217,148 +384,312 @@
 </script>
 </head>
 <body>
-<header>
-  <a class="brand" href="/">
-    <div class="brand-icon"><img src="/logo-icon.png" alt="PrintSlice logo" width="22" height="22"></div>
-    <span class="brand-name">PrintSlice</span>
-  </a>
-  <nav class="nav-links">
-    <a class="nlink" href="#how-it-works">How It Works</a>
-    <a class="nlink" href="#pricing">Pricing</a>
-    <a class="nlink" href="#faq">FAQ</a>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="bar">
+  <a class="wordmark" href="/" aria-label="PrintSlice home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><rect x="21.5" y="2" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="2" y="21.5" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="21.5" y="21.5" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><path d="M20 1.5v37M1.5 20h37" stroke="#2c5682" stroke-width="1.1" stroke-linecap="round"/><rect x="15.6" y="15.6" width="8.8" height="8.8" rx="1.5" transform="rotate(45 20 20)" fill="#4a90d9" stroke="#1a344e" stroke-width=".5"/></svg><span>PrintSlice</span></a>
+  <nav class="bar-nav" aria-label="Main">
+    <a href="#how-it-works">How It Works</a>
+    <a href="#beds">Printer guides</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
   </nav>
-  <div class="nav-actions">
-    <a class="nav-login" href="/app.html?login=1">Log In</a>
-    <a class="nav-cta" href="/app.html">Start Slicing</a>
+  <div class="bar-end">
+    <a href="/app.html?login=1">Log In</a>
+    <a class="button small" href="/app.html">Start Free Trial</a>
   </div>
 </header>
-<div class="wrap">
-  <section class="hero" style="padding-bottom:0;">
-    <div>
-      <h1>Big prints.<br>Small beds.<br>Solved.</h1>
-      <p class="lede">PrintSlice cuts oversized STL files into pieces your printer can actually hold, then engineers the connectors that pull them back together after printing.</p>
-      <div class="cta-row">
-        <a class="btn btn-primary" href="/app.html">Start Free Trial</a>
+
+<main id="main">
+
+<section class="story" id="how-it-works" data-story aria-label="How It Works">
+  <div class="stage">
+    <canvas id="field" aria-hidden="true"></canvas>
+    <figure class="stage-plan" aria-hidden="true">
+      <svg viewBox="0 0 400 400"><g fill="none" stroke="#4a90d9" stroke-width="1.2" opacity=".85"><rect x="14" y="14" width="180" height="180"/><rect x="206" y="14" width="180" height="180"/><rect x="14" y="206" width="180" height="180"/><rect x="206" y="206" width="180" height="180"/></g><rect x="28" y="28" width="152" height="152" rx="24" fill="#4e5f76"/><rect x="220" y="28" width="152" height="152" rx="24" fill="#2c3849"/><rect x="28" y="220" width="152" height="152" rx="24" fill="#2c3849"/><rect x="220" y="220" width="152" height="152" rx="24" fill="#4e5f76"/><path d="M200 6v388M6 200h388" stroke="#2c5682" stroke-width="2"/><rect x="176" y="176" width="48" height="48" rx="6" transform="rotate(45 200 200)" fill="#4a90d9" stroke="#1a344e" stroke-width="2"/></svg>
+    </figure>
+    <div class="scrim" aria-hidden="true"></div>
+    <p class="stage-status mono" aria-hidden="true">Loading the model</p>
+
+    <div class="chapters">
+      <article class="chapter chapter-hero" data-ch="0">
+        <h1 class="display">
+          <span class="line" style="--i:0">Big prints.</span>
+          <span class="line" style="--i:1">Small beds.</span>
+          <span class="line" style="--i:2">Solved.</span>
+        </h1>
+        <p class="lede rise" style="--i:1">PrintSlice cuts oversized STL files into pieces your printer can actually hold, then engineers the connectors that pull them back together after printing.</p>
+        <div class="cta rise" style="--i:2"><a class="button" href="/app.html">Start Free Trial</a></div>
+        <p class="mono note rise" style="--i:3">TRY IT FREE, NO CARD · FIRST MODEL FREE TO DOWNLOAD · CANCEL ANYTIME</p>
+      </article>
+
+      <article class="chapter" data-ch="1">
+        <p class="mono label"><span class="n">01</span><span>Load</span></p>
+        <h2 class="title">Drop it in</h2>
+        <p>Drop in a binary or ASCII STL. PrintSlice reads its size and triangle count, and tells you whether it already fits your bed.</p>
+        <div class="readout mono">
+          <div>Size (X x Y x Z): 320.0 x 320.0 x 32.0 mm</div>
+          <div>Footprint fits bed: <span class="warn">no, splitting needed</span></div>
+        </div>
+      </article>
+
+      <article class="chapter" data-ch="2">
+        <p class="mono label"><span class="n">02</span><span>Printer</span></p>
+        <h2 class="title">Set your bed size</h2>
+        <p>Enter your bed’s X, Y and Z in millimetres. A 2 mm safety margin is kept on every side, and you can change it.</p>
+        <div class="readout mono">
+          <div><b>Bed 180 × 180 × 180 mm</b></div>
+          <div>Safety margin per side (mm) <b>2</b></div>
+        </div>
+      </article>
+
+      <article class="chapter" data-ch="3">
+        <p class="mono label"><span class="n">03</span><span>Split</span></p>
+        <h2 class="title">Draw the lines</h2>
+        <p>PrintSlice cuts the model into the fewest even pieces that fit. Then click where each connector should go.</p>
+        <div class="readout mono">
+          <div>Grid: 2 x 2 x 1 = 4 piece(s)</div>
+          <div>Each piece: 160.0 x 160.0 x 32.0 mm</div>
+        </div>
+      </article>
+
+      <article class="chapter" data-ch="4">
+        <p class="mono label"><span class="n">04</span><span>Connectors</span></p>
+        <h2 class="title">Keyed, pinned, or dovetailed — pick per seam</h2>
+        <p>The key is a straight tab, the pin is a round peg, and the dovetail is a wedge that won’t pull apart.</p>
+        <p>Mix them across one model.</p>
+        <div class="readout mono">
+          <div>Joining points: <span class="ok">1 placed</span></div>
+          <div><span>Clearance</span> <b>0.2 mm</b></div>
+        </div>
+      </article>
+
+      <article class="chapter" data-ch="5">
+        <p class="mono label"><span class="n">05</span><span>Download</span></p>
+        <h2 class="title">Print &amp; lock together</h2>
+        <p>Each piece downloads as its own STL, or all of them in one ZIP, ready for your slicer.</p>
+        <div class="readout mono">
+          <div>Volume check: 100.00% of original volume recovered</div>
+          <div class="ok">All pieces fit the bed.</div>
+        </div>
+      </article>
+    </div>
+
+    <nav class="rail" aria-label="How It Works">
+      <button type="button" aria-label="PrintSlice">00</button>
+      <button type="button" aria-label="Load">01</button>
+      <button type="button" aria-label="Printer">02</button>
+      <button type="button" aria-label="Split">03</button>
+      <button type="button" aria-label="Connectors">04</button>
+      <button type="button" aria-label="Download">05</button>
+    </nav>
+    <p class="cue mono" aria-hidden="true">Scroll</p>
+    <div class="progress" aria-hidden="true"></div>
+  </div>
+</section>
+
+<section class="section" id="in-the-app" aria-labelledby="shots-h">
+  <div class="section-head">
+    <h2 class="title" id="shots-h" data-reveal>From one file to finished parts</h2>
+  </div>
+  <div class="shots">
+    <figure class="shot-main" data-reveal>
+      <div class="shot-frame"><img src="/assets/app-split.webp" alt="The PrintSlice app with the sample model split into four coloured pieces inside the bed outline" width="2160" height="1350" loading="lazy"></div>
+    </figure>
+    <figure class="shot-inset" data-reveal style="--i:2">
+      <div class="shot-frame"><img src="/assets/app-connector.webp" alt="Close-up of a rectangular key connector standing out of a piece's cut face" width="1260" height="977" loading="lazy"></div>
+    </figure>
+  </div>
+</section>
+
+<section class="section" id="joints" aria-labelledby="joints-h">
+  <div class="section-head">
+    <p class="mono" data-reveal>Connectors</p>
+    <h2 class="title" id="joints-h" data-reveal style="--i:1">A joint engineered, not eyeballed</h2>
+  </div>
+  <div class="joints">
+    <figure class="joint" data-reveal style="--i:0">
+      <svg viewBox="0 0 240 120" aria-hidden="true"><g class="j-left"><rect x="20" y="20" width="90" height="80" rx="6" fill="#4e5f76"/></g><g class="j-right"><rect x="130" y="20" width="90" height="80" rx="6" fill="#2c3849"/><rect x="130" y="46" width="22" height="28" fill="#0c1117"/></g><g class="j-left"><rect x="108" y="48" width="20" height="24" fill="#4a90d9"/></g></svg>
+      <figcaption class="mono">Rectangular key</figcaption>
+    </figure>
+    <figure class="joint" data-reveal style="--i:1">
+      <svg viewBox="0 0 240 120" aria-hidden="true"><g class="j-left"><rect x="20" y="20" width="90" height="80" rx="6" fill="#4e5f76"/></g><g class="j-right"><rect x="130" y="20" width="90" height="80" rx="6" fill="#2c3849"/><rect x="126" y="49" width="26" height="22" rx="11" fill="#0c1117"/></g><g class="j-left"><rect x="106" y="51" width="22" height="18" rx="9" fill="#4a90d9"/></g></svg>
+      <figcaption class="mono">Pin &amp; socket</figcaption>
+    </figure>
+    <figure class="joint" data-reveal style="--i:2">
+      <svg viewBox="0 0 240 120" aria-hidden="true"><g class="j-left"><rect x="20" y="20" width="90" height="80" rx="6" fill="#4e5f76"/></g><g class="j-right"><rect x="130" y="20" width="90" height="80" rx="6" fill="#2c3849"/><polygon points="130,51 152,40 152,80 130,69" fill="#0c1117"/></g><g class="j-left"><polygon points="108,53 128,45 128,75 108,67" fill="#4a90d9"/></g></svg>
+      <figcaption class="mono">Dovetail</figcaption>
+    </figure>
+  </div>
+  <div class="spec">
+    <div data-reveal>
+      <p class="mono"><b>A</b></p>
+      <h3>Clearance tuned to your printer's tolerance</h3>
+      <p>The tab and its socket are cut from one shared shape, with 0.2&nbsp;mm of clearance built in.</p>
+      <p>Loosen or tighten it per connector, from 0.05 to 0.6&nbsp;mm, to suit your printer.</p>
+      <div class="frag" aria-hidden="true"><div class="row"><span>Size (mm)<span class="cell">8</span></span><span>Depth (mm)<span class="cell">3.2</span></span><span>Clearance (mm)<span class="cell">0.2</span></span></div></div>
+    </div>
+    <div data-reveal style="--i:1">
+      <p class="mono"><b>B</b></p>
+      <h3>Solved from the mesh itself, not a template</h3>
+      <p>The pieces are added back up against the original volume, and each one is tested for holes.</p>
+      <p>A connector that would poke through the far side is refused before it’s placed.</p>
+      <div class="frag" aria-hidden="true"><div>Grid: 2 x 2 x 1 = 4 piece(s)</div><div>Joining points: <span class="ok">1 placed</span></div><div class="ok">All pieces fit the bed.</div></div>
+    </div>
+    <div data-reveal style="--i:2">
+      <p class="mono"><b>C</b></p>
+      <h3>Dense models, thinned first</h3>
+      <p>Above 50,000 triangles, PrintSlice offers a simplified copy to work on.</p>
+      <p>You see it before you use it, and the file on your disk is never changed.</p>
+      <div class="frag" aria-hidden="true"><div style="color:var(--ink)">184,302 triangles</div><div>Target triangles<span class="cell">20000</span></div><span class="chip">Preview simplified</span></div>
+    </div>
+    <div data-reveal style="--i:3">
+      <p class="mono"><b>D</b></p>
+      <h3>Do I need to install anything?</h3>
+      <p>No. Splitting, connector generation, and the 3D preview all run in your browser — nothing to install, and your model never leaves your computer.</p>
+      <div class="frag" aria-hidden="true"><div class="ok">Nothing is uploaded</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="beds" aria-labelledby="beds-h">
+  <div class="beds">
+    <div class="beds-side">
+      <h2 class="display beds-word" id="beds-h" data-reveal>Beds</h2>
+      <p data-reveal style="--i:1">Build volumes for the printers people bring most often. PrintSlice keeps 5.6&nbsp;mm clear on every side, so a 220&nbsp;mm bed takes pieces up to 208.8&nbsp;mm.</p>
+      <figure class="beds-plan" data-reveal style="--i:2"><svg viewBox="0 0 480 360" aria-hidden="true"><rect pathLength="1" style="--d:0" x="28" y="200.7" width="124.3" height="124.3" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect pathLength="1" style="--d:1" x="28" y="148.2" width="176.8" height="176.8" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect pathLength="1" style="--d:2" x="28" y="104" width="224.4" height="221" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect pathLength="1" style="--d:3" x="28" y="104" width="207.1" height="221" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect pathLength="1" style="--d:4" x="28" y="173.1" width="151.9" height="151.9" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect pathLength="1" style="--d:5" x="28" y="117.9" width="207.1" height="207.1" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect pathLength="1" style="--d:6" x="28" y="83.3" width="241.7" height="241.7" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect pathLength="1" style="--d:7" x="28" y="180" width="172.6" height="145" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect pathLength="1" style="--d:8" x="28" y="173.1" width="172.6" height="151.9" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect pathLength="1" style="--d:9" x="28" y="169.6" width="155.4" height="155.4" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect pathLength="1" style="--d:10" x="28" y="35" width="290" height="290" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect pathLength="1" style="--d:11" x="28" y="152.4" width="172.6" height="172.6" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect pathLength="1" style="--d:12" x="28" y="148.9" width="176.1" height="176.1" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect pathLength="1" style="--d:13" x="28" y="200.7" width="124.3" height="124.3" fill="none" stroke="#4a90d9" stroke-width="1.5"/><path style="--d:13" d="M152.3 200.7H334" stroke="#4a90d9" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2 3"/><text style="--d:13" x="340" y="204.7" fill="#e8eef6" font-size="12">180 mm <tspan fill-opacity=".62">A1 mini</tspan></text><rect pathLength="1" style="--d:14" x="28" y="173.1" width="151.9" height="151.9" fill="none" stroke="#4a90d9" stroke-width="1.5"/><path style="--d:14" d="M179.9 173.1H334" stroke="#4a90d9" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2 3"/><text style="--d:14" x="340" y="177.1" fill="#e8eef6" font-size="12">220 mm <tspan fill-opacity=".62">Ender 3</tspan></text><rect pathLength="1" style="--d:15" x="28" y="148.2" width="176.8" height="176.8" fill="none" stroke="#4a90d9" stroke-width="1.5"/><path style="--d:15" d="M204.8 148.2H334" stroke="#4a90d9" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2 3"/><text style="--d:15" x="340" y="152.2" fill="#e8eef6" font-size="12">256 mm <tspan fill-opacity=".62">A1, P1S</tspan></text><rect pathLength="1" style="--d:16" x="28" y="117.9" width="207.1" height="207.1" fill="none" stroke="#4a90d9" stroke-width="1.5"/><path style="--d:16" d="M235.1 117.9H334" stroke="#4a90d9" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2 3"/><text style="--d:16" x="340" y="121.9" fill="#e8eef6" font-size="12">300 mm <tspan fill-opacity=".62">K1 Max</tspan></text><rect pathLength="1" style="--d:17" x="28" y="83.3" width="241.7" height="241.7" fill="none" stroke="#4a90d9" stroke-width="1.5"/><path style="--d:17" d="M269.7 83.3H334" stroke="#4a90d9" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2 3"/><text style="--d:17" x="340" y="87.3" fill="#e8eef6" font-size="12">350 mm <tspan fill-opacity=".62">K2 Plus</tspan></text><rect pathLength="1" style="--d:18" x="28" y="35" width="290" height="290" fill="none" stroke="#4a90d9" stroke-width="1.5"/><path style="--d:18" d="M318 35H334" stroke="#4a90d9" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2 3"/><text style="--d:18" x="340" y="39" fill="#e8eef6" font-size="12">420 mm <tspan fill-opacity=".62">Kobra 3 Max</tspan></text></svg></figure>
+      <p class="beds-more" data-reveal><a href="/printer-bed-sizes.html">The largest piece for each of 20 printers</a></p>
+    </div>
+    <div class="beds-body">
+      <div class="bars" data-reveal style="--i:2">
+        <details open><summary>Bambu Lab</summary><ul>
+          <li><a href="/split-stl-bambu-a1-mini.html">A1 mini</a><span>180 × 180 × 180 mm</span></li>
+          <li><a href="/split-stl-bambu-a1.html">A1</a><span>256 × 256 × 256 mm</span></li>
+          <li><a href="/split-stl-bambu-p1s.html">P1S, P1P, X1 Carbon</a><span>256 × 256 × 256 mm</span></li>
+          <li><a href="/split-stl-bambu-h2d.html">H2D, single nozzle</a><span>325 × 320 × 325 mm</span></li>
+        </ul></details>
+        <details><summary>Creality</summary><ul>
+          <li><a href="/split-stl-ender-3.html">Ender 3, Pro, V2, V3 SE</a><span>220 × 220 × 250 mm</span></li>
+          <li><span>Ender 3 S1</span><span>220 × 220 × 270 mm</span></li>
+          <li><a href="/split-stl-creality-k1c.html">K1, K1C</a><span>220 × 220 × 250 mm</span></li>
+          <li><a href="/split-stl-creality-k1-max.html">K1 Max</a><span>300 × 300 × 300 mm</span></li>
+          <li><a href="/split-stl-creality-k2-plus.html">K2 Plus</a><span>350 × 350 × 350 mm</span></li>
+        </ul></details>
+        <details><summary>Prusa</summary><ul>
+          <li><a href="/split-stl-prusa-mk4.html">MK4, MK4S</a><span>250 × 210 × 220 mm</span></li>
+          <li><a href="/split-stl-prusa-mini.html">MINI+</a><span>180 × 180 × 180 mm</span></li>
+          <li><a href="/split-stl-prusa-core-one.html">CORE One, CORE One+</a><span>250 × 220 × 270 mm</span></li>
+        </ul></details>
+        <details><summary>Elegoo</summary><ul>
+          <li><a href="/split-stl-elegoo-neptune-4-pro.html">Neptune 4 Pro</a><span>225 × 225 × 265 mm</span></li>
+          <li><span>Neptune 4 Max</span><span>420 × 420 × 480 mm</span></li>
+          <li><a href="/split-stl-elegoo-centauri-carbon.html">Centauri Carbon</a><span>256 × 256 × 256 mm</span></li>
+        </ul></details>
+        <details><summary>Anycubic</summary><ul>
+          <li><a href="/split-stl-anycubic-kobra-3.html">Kobra 3</a><span>250 × 250 × 260 mm</span></li>
+          <li><span>Kobra 3 V2</span><span>255 × 255 × 260 mm</span></li>
+          <li><span>Kobra 3 Max</span><span>420 × 420 × 500 mm</span></li>
+        </ul></details>
+        <details><summary>Flashforge</summary><ul>
+          <li><a href="/split-stl-flashforge-adventurer-5m.html">Adventurer 5M</a><span>220 × 220 × 220 mm</span></li>
+        </ul></details>
       </div>
-      <div class="cta-note">TRY IT FREE, NO CARD · FIRST MODEL FREE TO DOWNLOAD · CANCEL ANYTIME</div>
     </div>
-    <div class="sheet">
-      <div class="crop tl"></div><div class="crop tr"></div><div class="crop bl"></div><div class="crop br"></div>
-      <div class="hero-3d" id="hero3d">
-        <video src="/hero-3d.mp4" autoplay loop muted playsinline aria-label="PrintSlice splitting a 3D model and adding connectors"></video>
+  </div>
+</section>
+
+<section class="section" id="pricing" aria-labelledby="pricing-h">
+  <h2 class="sr" id="pricing-h">Pricing</h2>
+  <div class="pricing">
+    <div class="plan plan-free">
+      <h3 data-reveal>Free</h3>
+      <p class="plan-for" data-reveal style="--i:1">For trying it on your own model.</p>
+      <p class="plan-inc" data-reveal style="--i:2">Split, add connectors and preview as many models as you like, with no account. Your first model is free to download. Want more before you subscribe? <a href="/early-access.html">Start a free 7-day trial</a>.</p>
+      <div class="plan-foot" data-reveal style="--i:3">
+        <p class="price">£0</p>
+        <a class="button ghost" href="/app.html">Start Free Trial</a>
       </div>
     </div>
-  </section>
-</div>
-<div class="wrap">
-  <section id="how-it-works" style="padding-bottom:64px;">
-    <div class="section-head reveal">
-      <h2>From one file to finished parts</h2>
-    </div>
-    <div class="demo-panel sheet reveal">
-      <div class="crop tl"></div><div class="crop tr"></div><div class="crop bl"></div><div class="crop br"></div>
-      <img src="/hero-screenshot.png" alt="PrintSlice viewport showing a loaded model split into pieces" width="1920" height="882">
-    </div>
-    <div class="steps">
-      <div class="step reveal" style="--reveal-i:0"><div class="step-num">01</div><h3>Drop it in</h3></div>
-      <div class="step reveal" style="--reveal-i:1"><div class="step-num">02</div><h3>Draw the lines</h3></div>
-      <div class="step reveal" style="--reveal-i:2"><div class="step-num">03</div><h3>Print &amp; lock together</h3></div>
-    </div>
-  </section>
-</div>
-<div class="wrap">
-  <section class="connector-grid" style="padding-top:40px;">
-    <div class="connector-stage sheet reveal" id="connStage">
-      <div class="conn-piece left"><div class="conn-tab"></div></div>
-      <div class="conn-piece right"><div class="conn-socket"></div></div>
-    </div>
-    <div class="connector-copy reveal">
-      <h2>A joint engineered, not eyeballed</h2>
-      <ul class="connector-list">
-        <li>Keyed, pinned, or dovetailed — pick per seam</li>
-        <li>Clearance tuned to your printer's tolerance</li>
-        <li>Solved from the mesh itself, not a template</li>
-      </ul>
-    </div>
-  </section>
-</div>
-<div class="wrap">
-  <section>
-    <div class="compare">
-      <div class="compare-card bad reveal" style="--reveal-i:0"><div class="compare-label">Won't Fit</div><div class="plate"><div class="plate-model-big"></div></div></div>
-      <div class="compare-card good reveal" style="--reveal-i:1"><div class="compare-label">Fits, In Four</div><div class="plate"><div class="plate-grid"><div></div><div></div><div></div><div></div></div></div></div>
-    </div>
-  </section>
-</div>
-<div class="wrap">
-  <section id="pricing" style="text-align:center;">
-    <div class="pricing-card reveal">
-      <div class="eyebrow" style="margin-bottom:0;">PrintSlice Pro</div>
-      <div class="price">£3.99<span>/MO</span></div>
-      <ul class="pricing-list">
+    <div class="plan plan-pro">
+      <h3 data-reveal>Pro</h3>
+      <p class="plan-for" data-reveal style="--i:1">For everything you print after that.</p>
+      <ul class="plan-list" data-reveal style="--i:2">
         <li>Unlimited STL splits</li>
         <li>Rectangular key, pin, and dovetail joints</li>
         <li>Cancel anytime</li>
       </ul>
-      <a class="btn btn-primary" href="/app.html" style="display:block;">Start Slicing</a>
-      <div class="pricing-note">Your first model is free to download. Want more before you subscribe? <a href="/early-access.html">Start a free 7-day trial</a>.</div>
+      <div class="plan-foot" data-reveal style="--i:3">
+        <div class="price-wrap"><p class="price">£3.99</p><p class="per mono">a month</p></div>
+        <a class="button" href="/app.html">Start Slicing</a>
+      </div>
     </div>
-  </section>
-</div>
-<div class="wrap">
-  <section id="faq">
-    <div class="faq reveal">
-      <details><summary>What file types are supported?</summary><p>STL files, both binary and ASCII, for input — and binary STL for the split output pieces, the standard format every slicer accepts.</p></details>
-      <details><summary>Does PrintSlice work with any 3D printer?</summary><p>Yes — the exported pieces are standard STL files, compatible with any slicer or printer you already use.</p></details>
-      <details><summary>Do I need to install anything?</summary><p>No. Splitting, connector generation, and the 3D preview all run in your browser — nothing to install, and your model never leaves your computer.</p></details>
-      <details><summary>How does pricing work?</summary><p>One plan at £3.99/month, cancel anytime — no tiers or feature gating. See the <a href="/help.html">full FAQ</a> for billing details.</p></details>
-    </div>
-  </section>
-</div>
-<div class="wrap">
-  <section class="final-cta">
-    <h2>Stop designing around your bed size.</h2>
-    <div class="cta-row"><a class="btn btn-primary" href="/app.html">Start Free Trial</a></div>
-  </section>
-</div>
-<footer>
-  <div class="wrap footer-row">
-    <span>© 2026 PrintSlice</span>
-    <nav class="footer-links">
-      <a href="/printer-bed-sizes.html">Printer guides</a>
-      <a href="/help.html">Help</a>
-      <a href="/contact.html">Contact</a>
-      <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a>
-      <a href="/terms.html">Terms</a>
-      <a href="/privacy.html">Privacy</a>
-    </nav>
   </div>
-</footer>
-<script>
-if ("IntersectionObserver" in window){
-  const revealObserver = new IntersectionObserver((entries) => {
-    for (const entry of entries){
-      if (entry.isIntersecting){ entry.target.classList.add("is-visible"); revealObserver.unobserve(entry.target); }
-    }
-  }, { threshold: 0.15, rootMargin: "0px 0px -40px 0px" });
-  document.querySelectorAll(".reveal").forEach(el => revealObserver.observe(el));
-} else {
-  document.querySelectorAll(".reveal").forEach(el => el.classList.add("is-visible"));
-}
+</section>
 
-const connStage = document.getElementById('connStage');
-if ("IntersectionObserver" in window && connStage){
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting){
-        setInterval(() => connStage.classList.toggle('joined'), 1800);
-        connStage.classList.add('joined');
-        io.unobserve(connStage);
-      }
-    });
-  }, { threshold: 0.4 });
-  io.observe(connStage);
-}
+<section class="section" id="faq" aria-labelledby="faq-h">
+  <div class="section-head">
+    <h2 class="mono" id="faq-h" data-reveal>FAQ</h2>
+  </div>
+  <div class="faq-text" data-reveal>
+    <p><strong>What file types are supported?</strong> STL files, both binary and ASCII, for input — and binary STL for the split output pieces, the standard format every slicer accepts.</p>
+    <p><strong>Does PrintSlice work with any 3D printer?</strong> Yes — the exported pieces are standard STL files, compatible with any slicer or printer you already use.</p>
+    <p><strong>Do I need to install anything?</strong> No. Splitting, connector generation, and the 3D preview all run in your browser — nothing to install, and your model never leaves your computer.</p>
+    <p><strong>How does pricing work?</strong> One plan at £3.99/month, cancel anytime — no tiers or feature gating. See the <a href="/help.html">full FAQ</a> for billing details.</p>
+    <p><strong>Will the pieces fit together?</strong> Yes. Each tab and its socket come from one shared shape, cut with real solid geometry and 0.2&nbsp;mm of clearance, so they fit without sanding.</p>
+    <p><strong>Which connectors are there?</strong> A rectangular key, a round pin and socket, and a locking dovetail that resists pulling apart. You can mix them on one model.</p>
+    <p><strong>Can I change a connector?</strong> Yes. Click a placed connector to change its type, size, depth and clearance, or set the defaults before you place the next one.</p>
+    <p><strong>Why was a connector refused?</strong> PrintSlice checks it can be printed first. It refuses one that’s too big for the part, deep enough to poke through, or on a wall too thin to hold it. Try a flatter spot nearby, or a smaller connector.</p>
+    <p><strong>Why is placing a connector slow?</strong> Usually the model is very detailed. Above 50,000 triangles PrintSlice offers to simplify it, and you can preview the result before you use it.</p>
+    <p><strong>Anything special when printing?</strong> No special settings. Printing the faces with connectors flat on the bed gives the cleanest fit.</p>
+    <p><strong>Is there a free trial?</strong> Yes. Split and preview with no account, and download your first model free with a free account. Pro then starts with 7 days free, and £3.99 a month after that.</p>
+    <p><strong>How do I cancel?</strong> Log in and press Manage billing in the app. Stripe’s billing page opens, where you can cancel or change your card.</p>
+  </div>
+</section>
+
+<section class="final" aria-labelledby="final-h">
+  <h2 class="title" id="final-h" data-reveal>Stop designing around your bed size.</h2>
+  <a class="button" href="/app.html" data-reveal style="--i:1">Start Free Trial</a>
+</section>
+
+</main>
+
+<footer class="foot">
+  <a class="wordmark" href="/" aria-label="PrintSlice home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><rect x="21.5" y="2" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="2" y="21.5" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="21.5" y="21.5" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><path d="M20 1.5v37M1.5 20h37" stroke="#2c5682" stroke-width="1.1" stroke-linecap="round"/><rect x="15.6" y="15.6" width="8.8" height="8.8" rx="1.5" transform="rotate(45 20 20)" fill="#4a90d9" stroke="#1a344e" stroke-width=".5"/></svg><span>PrintSlice</span></a>
+  <nav class="foot-nav" aria-label="Footer">
+    <a href="#how-it-works">How It Works</a>
+    <a href="#beds">Printer guides</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+    <a href="/help.html">Help</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/affiliates.html">Affiliates</a>
+  </nav>
+  <div class="foot-blocks">
+    <p>A model that won’t split cleanly? <a href="/contact.html">Send it to us</a> and say what went wrong.</p>
+    <p>Show what you printed, or ask other makers, in the <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a> on Discord.</p>
+  </div>
+  <div class="foot-legal mono"><span>© 2026 PrintSlice</span><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a><a href="/early-access.html">Early access</a><span class="foot-lang" data-lang-slot></span></div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" defer></script>
+<script src="/story.js" defer></script>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  var bar = document.querySelector(".bar");
+  function barState(){ bar.classList.toggle("is-solid", window.scrollY > 8); }
+  window.addEventListener("scroll", barState, { passive: true });
+  barState();
+
+  // Entrances, once per element.
+  var targets = document.querySelectorAll("[data-reveal]");
+  if ("IntersectionObserver" in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if (e.isIntersecting){ e.target.classList.add("is-in"); io.unobserve(e.target); } });
+    }, { rootMargin: "0px 0px -10% 0px", threshold: 0.1 });
+    targets.forEach(function(el){ io.observe(el); });
+  } else targets.forEach(function(el){ el.classList.add("is-in"); });
+
+});
 </script>
 <script src="/consent.js" defer></script>
 </body></html>

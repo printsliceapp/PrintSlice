@@ -17,6 +17,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="PrintSlice: a model split into four pieces that fit a printer bed">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0c1117">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
 <link rel="icon" href="/favicon-96.png" sizes="96x96" type="image/png">
@@ -78,240 +79,199 @@
  ]
 }
 </script>
-
-<style>
-  :root{
-    --accent:#124559; --accent-hover:#0d3546; --accent-soft:rgba(18,69,89,.14);
-    --ink:#01161e; --ink-soft:#3d5560; --ink-faint:#6b8791;
-    --bg:#e3ecda; --paper:#f8fbf0; --paper-soft:#dbe6d1;
-    --line:rgba(1,22,30,.13); --line-strong:rgba(1,22,30,.24);
-    --radius:5px; --radius-lg:9px;
-    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin:0; padding:0; }
-  body{
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-    color:var(--ink);
-    background:var(--bg);
-    min-height:100vh;
-  }
-  a{ color:var(--accent-hover); }
-  a:hover{ color:var(--accent); }
-  .wrap{ max-width:760px; margin:0 auto; padding:32px 20px 80px; }
-  .nav{ display:flex; align-items:center; flex-wrap:wrap; row-gap:10px; margin-bottom:40px; }
-  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink); }
-  .brand-icon{
-    width:32px; height:32px; flex:none;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .brand-name{ font-weight:800; font-size:14px; letter-spacing:.06em; text-transform:uppercase; }
-  .nav-links{ display:flex; flex-wrap:wrap; flex-basis:100%; justify-content:flex-end; gap:8px 16px; font-size:12px; }
-  .nav-links a{ color:var(--ink-soft); text-decoration:none; font-weight:700; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
-  .nav-links a:hover{ color:var(--ink); }
-  .crumbs{ font-size:12.5px; color:var(--ink-faint); margin:0 0 14px; }
-  .crumbs a{ color:var(--ink-faint); }
-  h1{ font-size:30px; margin:0 0 14px; letter-spacing:-.01em; line-height:1.2; }
-  h2{ font-size:20px; margin:44px 0 14px; letter-spacing:-.005em; }
-  p, li{ font-size:15px; color:var(--ink-soft); line-height:1.65; }
-  p b, li b{ color:var(--ink); }
-  .lede{ font-size:16px; margin:0 0 22px; }
-  .cta-box{
-    border:1px solid var(--line-strong); border-radius:var(--radius-lg); background:var(--paper);
-    padding:20px 22px; margin:0 0 10px; box-shadow:0 16px 34px -26px rgba(1,22,30,.28);
-    display:flex; flex-wrap:wrap; align-items:center; gap:12px 20px;
-  }
-  .cta-box p{ margin:0; font-size:13.5px; flex:1 1 220px; }
-  .btn{
-    display:inline-block; background:var(--accent); color:var(--paper); text-decoration:none;
-    font-weight:700; font-size:14px; padding:12px 18px; border-radius:var(--radius);
-  }
-  .btn:hover{ background:var(--accent-hover); color:var(--paper); }
-  .stat-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin:0 0 26px; }
-  .stat{ border:1px solid var(--line); border-radius:var(--radius-lg); background:var(--paper); padding:14px 16px; }
-  .stat-label{ font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); }
-  .stat-value{ font-family:var(--mono); font-size:16px; font-weight:700; color:var(--ink); margin-top:4px; }
-  ol.steps{ padding-left:22px; margin:0; }
-  ol.steps li{ margin-bottom:8px; }
-  .tip{ border-left:3px solid var(--accent); padding:2px 0 2px 16px; margin:0 0 18px; }
-  .tip h3{ font-size:15.5px; margin:0 0 4px; color:var(--ink); }
-  .tip p{ margin:0; font-size:14.5px; }
-  .table-scroll{ overflow-x:auto; border:1px solid var(--line-strong); border-radius:var(--radius-lg); background:var(--paper); }
-  table{ border-collapse:collapse; width:100%; font-size:14px; }
-  th, td{ text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
-  tr:last-child td{ border-bottom:none; }
-  th{ font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); background:var(--paper-soft); }
-  td{ color:var(--ink-soft); }
-  td.num{ font-family:var(--mono); white-space:nowrap; color:var(--ink); }
-  td a{ white-space:nowrap; }
-  .note{ font-size:13px; color:var(--ink-faint); }
-  .faq-item{
-    border:1px solid var(--line-strong); border-radius:var(--radius-lg); background:var(--paper);
-    padding:20px 22px; margin-bottom:14px; box-shadow:0 16px 34px -26px rgba(1,22,30,.28);
-  }
-  .faq-item h3{ font-size:16.5px; margin:0 0 9px; color:var(--ink); }
-  .faq-item p{ font-size:14px; line-height:1.65; margin:0; }
-  .related{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:18px 24px; }
-  .related h3{ font-size:11.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 8px; }
-  .related ul{ list-style:none; padding:0; margin:0; }
-  .related li{ font-size:14.5px; margin:0 0 6px; }
-  footer{ margin-top:48px; text-align:center; font-size:13px; color:var(--ink-faint); }
-  footer a{ color:var(--ink-faint); }
-  @media (max-width: 600px){
-    h1{ font-size:25px; }
-    /* table rows become small cards so no column hides off-screen */
-    .table-scroll{ border:none; background:none; overflow:visible; }
-    thead{ display:none; }
-    table, tbody, tr, td{ display:block; width:100%; }
-    tr{ border:1px solid var(--line-strong); border-radius:var(--radius-lg); background:var(--paper); padding:12px 14px; margin-bottom:10px; }
-    td{ border:none; padding:3px 0; font-size:13.5px; }
-    td.printer{ font-weight:700; font-size:14.5px; padding-bottom:6px; }
-    td.num{ display:flex; justify-content:space-between; gap:12px; }
-    td.num::before{ content:attr(data-label); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color:var(--ink-faint); }
-    td.go{ padding-top:6px; }
-  }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
-<div class="wrap">
-  <div class="nav">
-    <a class="brand" href="/">
-      <div class="brand-icon">
-        <img src="/logo-icon.png" alt="PrintSlice logo" width="24" height="24">
+<a class="skip" href="#main">Skip to content</a>
+<header class="mast">
+  <a class="wordmark" href="/" aria-label="PrintSlice home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><rect x="21.5" y="2" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="2" y="21.5" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="21.5" y="21.5" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><path d="M20 1.5v37M1.5 20h37" stroke="#2c5682" stroke-width="1.1" stroke-linecap="round"/><rect x="15.6" y="15.6" width="8.8" height="8.8" rx="1.5" transform="rotate(45 20 20)" fill="#4a90d9" stroke="#1a344e" stroke-width=".5"/></svg><span>PrintSlice</span></a>
+  <nav class="mast-nav" aria-label="Main">
+    <a href="/printer-bed-sizes.html">Printer guides</a>
+    <a href="/help.html">Help</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/app.html?login=1">Log In</a>
+  </nav>
+  <a class="button small" href="/app.html">Start Free Trial</a>
+</header>
+
+<main id="main">
+  <div class="guide-top">
+    <div class="guide-intro">
+      <p class="crumbs" data-rise><a href="/printer-bed-sizes.html">Printer guides</a> › Bambu Lab A1</p>
+      <h1 class="display" data-rise style="--i:1">How to print models bigger than the Bambu Lab A1</h1>
+      <p class="guide-lede" data-rise style="--i:2">The Bambu Lab A1 has a build volume of <b>256 × 256 × 256 mm</b>. That's a generous bed, but long props, wall art and furniture parts still go over it.</p>
+      <p class="guide-more" data-rise style="--i:2">To print something larger, split the STL into pieces that fit and join them after printing. PrintSlice does the splitting in your browser: with default settings each piece is at most <b>244 × 244 × 244 mm</b>, and you can add pin, key or dovetail connectors on the cut faces so the pieces line up and snap together.</p>
+      <div class="guide-cta" data-rise style="--i:3">
+        <a class="button" href="/app.html?bed=256x256x256">Open PrintSlice with a 256 × 256 × 256 bed</a>
+        <p>Free to split and preview, and your first model is free to download. The bed size is filled in for you.</p>
       </div>
-      <span class="brand-name">PrintSlice</span>
-    </a>
-    <div class="nav-links">
-      <a href="/app.html?login=1">Log In</a>
-      <a href="/printer-bed-sizes.html">Printer guides</a>
-      <a href="/help.html">Help</a>
-      <a href="/contact.html">Contact</a>
-      <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a>
     </div>
+    <figure class="plate guide-plate" data-rise style="--i:2">
+      <svg viewBox="0 0 480 360" role="img" aria-label="A 600 mm prop sword blade, 600 × 80 × 20 mm, cut into 3 pieces for a 256 × 256 × 256 mm bed"><rect x="38.7" y="151.3" width="110.9" height="41.4" fill="hsl(0 55% 55%)"/><rect x="154.7" y="151.3" width="110.9" height="41.4" fill="hsl(222 55% 55%)"/><rect x="270.6" y="151.3" width="110.9" height="41.4" fill="hsl(85 55% 55%)"/><rect x="20" y="97.8" width="148.4" height="148.4" fill="none" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="6 5"/><text x="20" y="87.8" fill="#e8eef6" font-size="14">Bed 256 × 256 mm</text><path d="M36.2 261.2V271.2M384 261.2V271.2M36.2 266.2H384M399 148.8H409M399 195.2H409M404 148.8V195.2" fill="none" stroke="#e8eef6" stroke-opacity=".7" stroke-width="1.2"/><text x="210.1" y="288.2" fill="#e8eef6" font-size="14" text-anchor="middle">600 mm</text><text x="414" y="176" fill="#e8eef6" font-size="14">80 mm</text></svg>
+      <figcaption><span>A 600 mm prop sword blade, 600 × 80 × 20 mm</span><span>3 pieces on the A1</span></figcaption>
+    </figure>
   </div>
 
-  <p class="crumbs"><a href="/printer-bed-sizes.html">Printer guides</a> › Bambu Lab A1</p>
-  <h1>How to print models bigger than the Bambu Lab A1</h1>
-  <p class="lede">The Bambu Lab A1 has a build volume of <b>256 × 256 × 256 mm</b>. That's a generous bed, but long props, wall art and furniture parts still go over it. To print something larger, split the STL into pieces that fit and join them after printing. PrintSlice does the splitting in your browser: with default settings each piece is at most <b>244 × 244 × 244 mm</b>, and you can add pin, key or dovetail connectors on the cut faces so the pieces line up and snap together.</p>
-
-  <div class="cta-box">
-    <a class="btn" href="/app.html?bed=256x256x256">Open PrintSlice with a 256 × 256 × 256 bed</a>
-    <p>Free to split and preview, and your first model is free to download. The bed size is filled in for you.</p>
-  </div>
-
-  <h2>Bambu Lab A1 at a glance</h2>
-  <div class="stat-row">
-    <div class="stat"><div class="stat-label">Build volume</div><div class="stat-value">256 × 256 × 256 mm</div></div>
-    <div class="stat"><div class="stat-label">Largest piece</div><div class="stat-value">244 × 244 × 244 mm</div></div>
-    <div class="stat"><div class="stat-label">Example</div><div class="stat-value">3 pieces</div></div>
-  </div>
-  <p><b>Example:</b> A 600 mm prop sword blade (600 × 80 × 20 mm) doesn't fit the A1. PrintSlice splits it 3 × 1 × 1 into 3 pieces of about 200 × 80 × 20 mm, each of which fits the bed.</p>
-
-  <h2>How to split a model for the A1</h2>
-  <ol class="steps">
-    <li><a href="/app.html?bed=256x256x256">Open PrintSlice with the A1 bed size</a> and drop in your STL file, or try the sample model.</li>
-    <li>Press <b>Split into bed-sized pieces</b>. PrintSlice works out the smallest grid of equal pieces that fits, cutting along all three axes if it needs to.</li>
-    <li>Open a piece's preview and click a cut face to add a key, pin or dovetail connector. Then download the pieces and slice them in Bambu Studio as normal.</li>
-  </ol>
-
-  <h2>Tips for splitting on the A1</h2>
-  <div class="tip">
-    <h3>Long parts only need cutting one way</h3>
-    <p>Swords, staffs, rails and frames are the classic A1 overflow: one long side and two short ones. PrintSlice only cuts the long side in that case, so you get a short row of pieces with a connector at each seam.</p>
-  </div>
-  <div class="tip">
-    <h3>Use dovetails where it takes load</h3>
-    <p>On a prop that gets swung or carried, a dovetail joint resists pulling apart better than a straight key. Add glue as well for anything that takes real stress; the connectors keep the pieces lined up while it sets.</p>
-  </div>
-  <div class="tip">
-    <h3>Mind the moving bed</h3>
-    <p>Like the A1 mini, the A1 moves the plate under the print. Lay tall pieces on a flat side in Bambu Studio, and use a brim if one looks unsteady.</p>
-  </div>
-  <div class="tip">
-    <h3>Upgraded from the A1 mini?</h3>
-    <p>Pieces split for a 180 mm bed print fine on the A1, but splitting again for 256 mm usually means fewer pieces and fewer seams. A 260 × 220 × 280 mm helmet needs 8 pieces on the A1 mini but only 4 on the A1.</p>
-  </div>
-
-  <h2>Questions</h2>
-  <div class="faq-item">
-    <h3>What is the Bambu Lab A1's build volume?</h3>
-    <p>256 × 256 × 256 mm (about 10.1 × 10.1 × 10.1 inches).</p>
-  </div>
-  <div class="faq-item">
-    <h3>What's the largest single piece PrintSlice makes for the A1?</h3>
-    <p>With default settings, 244 × 244 × 244 mm. PrintSlice keeps 5.6 mm clear on every side: a 2 mm safety margin you can change, plus 3.6 mm so connector tabs still fit on the bed.</p>
-  </div>
-  <div class="faq-item">
-    <h3>Can't I just split the model in Bambu Studio?</h3>
-    <p>Bambu Studio's cut tool is fine for one or two cuts you place by hand. PrintSlice is quicker when a model needs several: it works out every cut from your bed size, splits along all three axes in one go, and adds key, pin or dovetail connectors on the seams.</p>
-  </div>
-  <div class="faq-item">
-    <h3>Will the printed pieces fit back together?</h3>
-    <p>Yes. Each tab and socket pair is made from the same shape with a small built-in clearance (0.2 mm by default, adjustable per connector), so the pieces push together without sanding. You can choose a rectangular key, a round pin or a dovetail, which resists being pulled apart.</p>
-  </div>
-  <div class="faq-item">
-    <h3>Is my model uploaded anywhere?</h3>
-    <p>No. The splitting, connectors and 3D preview all run in your browser, so your STL file never leaves your computer.</p>
-  </div>
-  <div class="faq-item">
-    <h3>Does PrintSlice cost anything?</h3>
-    <p>Splitting and previewing is free, with no account needed, and your first model is free to download with a free account. To download more models, start a 7-day free trial (a card is needed, but you aren't charged until the 7 days are up and you can cancel before then). After that it's £3.99 a month.</p>
-  </div>
-
-  <h2>More printer guides</h2>
-  <div class="related">
-    <div>
-      <h3>Bambu Lab</h3>
-      <ul>
-        <li><a href="/split-stl-bambu-a1-mini.html">Bambu Lab A1 mini</a></li>
-        <li><a href="/split-stl-bambu-p1s.html">Bambu Lab P1S</a></li>
-        <li><a href="/split-stl-bambu-h2d.html">Bambu Lab H2D</a></li>
-      </ul>
+  <section class="sect" aria-labelledby="glance">
+    <h2 class="sect-h display" id="glance">Bambu Lab A1 at a glance</h2>
+    <div class="sect-body">
+      <div class="figures specs">
+        <div><span class="fig-label">Build volume</span><span class="fig-value">256<span class="x">×</span>256<span class="x">×</span>256<small>mm</small></span></div>
+        <div><span class="fig-label">Largest piece</span><span class="fig-value">244<span class="x">×</span>244<span class="x">×</span>244<small>mm</small></span></div>
+        <div><span class="fig-label">Example</span><span class="fig-value">3<small>pieces</small></span></div>
+      </div>
+      <div class="prose sect-note">
+        <p><b>Example:</b> A 600 mm prop sword blade (600 × 80 × 20 mm) doesn't fit the A1. PrintSlice splits it 3 × 1 × 1 into 3 pieces of about 200 × 80 × 20 mm, each of which fits the bed.</p>
+      </div>
     </div>
-    <div>
-      <h3>Creality</h3>
-      <ul>
-        <li><a href="/split-stl-ender-3.html">Creality Ender 3</a></li>
-        <li><a href="/split-stl-creality-k1c.html">Creality K1C</a></li>
-        <li><a href="/split-stl-creality-k1-max.html">Creality K1 Max</a></li>
-        <li><a href="/split-stl-creality-k2-plus.html">Creality K2 Plus</a></li>
-      </ul>
+  </section>
+
+  <section class="sect" aria-labelledby="steps">
+    <h2 class="sect-h display" id="steps">How to split a model for the A1</h2>
+    <div class="sect-body">
+      <ol class="steps">
+        <li><span><a href="/app.html?bed=256x256x256">Open PrintSlice with the A1 bed size</a> and drop in your STL file, or try the sample model.</span></li>
+        <li><span>Press <b>Split into bed-sized pieces</b>. PrintSlice works out the smallest grid of equal pieces that fits, cutting along all three axes if it needs to.</span></li>
+        <li><span>Open a piece's preview and click a cut face to add a key, pin or dovetail connector. Then download the pieces and slice them in Bambu Studio as normal.</span></li>
+      </ol>
     </div>
-    <div>
-      <h3>Prusa</h3>
-      <ul>
-        <li><a href="/split-stl-prusa-mk4.html">Original Prusa MK4</a></li>
-        <li><a href="/split-stl-prusa-mini.html">Original Prusa MINI+</a></li>
-        <li><a href="/split-stl-prusa-core-one.html">Prusa CORE One</a></li>
-      </ul>
+  </section>
+
+  <section class="sect" aria-labelledby="tips">
+    <h2 class="sect-h display" id="tips">Tips for splitting on the A1</h2>
+    <div class="sect-body">
+      <div class="tips">
+        <div class="tip">
+          <h3>Long parts only need cutting one way</h3>
+          <p>Swords, staffs, rails and frames are the classic A1 overflow: one long side and two short ones. PrintSlice only cuts the long side in that case, so you get a short row of pieces with a connector at each seam.</p>
+        </div>
+        <div class="tip">
+          <h3>Use dovetails where it takes load</h3>
+          <p>On a prop that gets swung or carried, a dovetail joint resists pulling apart better than a straight key. Add glue as well for anything that takes real stress; the connectors keep the pieces lined up while it sets.</p>
+        </div>
+        <div class="tip">
+          <h3>Mind the moving bed</h3>
+          <p>Like the A1 mini, the A1 moves the plate under the print. Lay tall pieces on a flat side in Bambu Studio, and use a brim if one looks unsteady.</p>
+        </div>
+        <div class="tip">
+          <h3>Upgraded from the A1 mini?</h3>
+          <p>Pieces split for a 180 mm bed print fine on the A1, but splitting again for 256 mm usually means fewer pieces and fewer seams. A 260 × 220 × 280 mm helmet needs 8 pieces on the A1 mini but only 4 on the A1.</p>
+        </div>
+      </div>
     </div>
-    <div>
-      <h3>Elegoo</h3>
-      <ul>
-        <li><a href="/split-stl-elegoo-neptune-4-pro.html">Elegoo Neptune 4 Pro</a></li>
-        <li><a href="/split-stl-elegoo-centauri-carbon.html">Elegoo Centauri Carbon</a></li>
-      </ul>
+  </section>
+
+  <section class="sect" aria-labelledby="questions">
+    <h2 class="sect-h display" id="questions">Questions</h2>
+    <div class="sect-body">
+      <div class="entry">
+        <span class="entry-n" aria-hidden="true">1</span>
+        <h3>What is the Bambu Lab A1's build volume?</h3>
+        <p>256 × 256 × 256 mm (about 10.1 × 10.1 × 10.1 inches).</p>
+      </div>
+      <div class="entry">
+        <span class="entry-n" aria-hidden="true">2</span>
+        <h3>What's the largest single piece PrintSlice makes for the A1?</h3>
+        <p>With default settings, 244 × 244 × 244 mm. PrintSlice keeps 5.6 mm clear on every side: a 2 mm safety margin you can change, plus 3.6 mm so connector tabs still fit on the bed.</p>
+      </div>
+      <div class="entry">
+        <span class="entry-n" aria-hidden="true">3</span>
+        <h3>Can't I just split the model in Bambu Studio?</h3>
+        <p>Bambu Studio's cut tool is fine for one or two cuts you place by hand. PrintSlice is quicker when a model needs several: it works out every cut from your bed size, splits along all three axes in one go, and adds key, pin or dovetail connectors on the seams.</p>
+      </div>
+      <div class="entry">
+        <span class="entry-n" aria-hidden="true">4</span>
+        <h3>Will the printed pieces fit back together?</h3>
+        <p>Yes. Each tab and socket pair is made from the same shape with a small built-in clearance (0.2 mm by default, adjustable per connector), so the pieces push together without sanding. You can choose a rectangular key, a round pin or a dovetail, which resists being pulled apart.</p>
+      </div>
+      <div class="entry">
+        <span class="entry-n" aria-hidden="true">5</span>
+        <h3>Is my model uploaded anywhere?</h3>
+        <p>No. The splitting, connectors and 3D preview all run in your browser, so your STL file never leaves your computer.</p>
+      </div>
+      <div class="entry">
+        <span class="entry-n" aria-hidden="true">6</span>
+        <h3>Does PrintSlice cost anything?</h3>
+        <p>Splitting and previewing is free, with no account needed, and your first model is free to download with a free account. To download more models, start a 7-day free trial (a card is needed, but you aren't charged until the 7 days are up and you can cancel before then). After that it's £3.99 a month.</p>
+      </div>
     </div>
-    <div>
-      <h3>Anycubic</h3>
-      <ul>
-        <li><a href="/split-stl-anycubic-kobra-3.html">Anycubic Kobra 3</a></li>
-      </ul>
+  </section>
+
+  <section class="sect" aria-labelledby="more">
+    <h2 class="sect-h display" id="more">More printer guides</h2>
+    <div class="sect-body">
+      <div class="related">
+        <div>
+          <h3>Bambu Lab</h3>
+          <ul>
+            <li><a href="/split-stl-bambu-a1-mini.html">Bambu Lab A1 mini</a></li>
+            <li><a href="/split-stl-bambu-p1s.html">Bambu Lab P1S</a></li>
+            <li><a href="/split-stl-bambu-h2d.html">Bambu Lab H2D</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Creality</h3>
+          <ul>
+            <li><a href="/split-stl-ender-3.html">Creality Ender 3</a></li>
+            <li><a href="/split-stl-creality-k1c.html">Creality K1C</a></li>
+            <li><a href="/split-stl-creality-k1-max.html">Creality K1 Max</a></li>
+            <li><a href="/split-stl-creality-k2-plus.html">Creality K2 Plus</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Prusa</h3>
+          <ul>
+            <li><a href="/split-stl-prusa-mk4.html">Original Prusa MK4</a></li>
+            <li><a href="/split-stl-prusa-mini.html">Original Prusa MINI+</a></li>
+            <li><a href="/split-stl-prusa-core-one.html">Prusa CORE One</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Elegoo</h3>
+          <ul>
+            <li><a href="/split-stl-elegoo-neptune-4-pro.html">Elegoo Neptune 4 Pro</a></li>
+            <li><a href="/split-stl-elegoo-centauri-carbon.html">Elegoo Centauri Carbon</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Anycubic</h3>
+          <ul>
+            <li><a href="/split-stl-anycubic-kobra-3.html">Anycubic Kobra 3</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Flashforge</h3>
+          <ul>
+            <li><a href="/split-stl-flashforge-adventurer-5m.html">Flashforge Adventurer 5M</a></li>
+          </ul>
+        </div>
+      </div>
+      <p class="related-more"><a href="/printer-bed-sizes.html">Bed sizes for every popular printer →</a></p>
     </div>
-    <div>
-      <h3>Flashforge</h3>
-      <ul>
-        <li><a href="/split-stl-flashforge-adventurer-5m.html">Flashforge Adventurer 5M</a></li>
-      </ul>
-    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="foot-close">
+    <p class="foot-line display">Stop designing around your bed size.</p>
+    <a class="button" href="/app.html?bed=256x256x256">Start Free Trial</a>
   </div>
-  <p><a href="/printer-bed-sizes.html">Bed sizes for every popular printer →</a></p>
-
-  <footer>
-    <a href="/">← Back to PrintSlice</a>
-  </footer>
-</div>
-
+  <nav class="foot-nav" aria-label="Footer">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/printer-bed-sizes.html">Printer guides</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/help.html">Help</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/affiliates.html">Affiliates</a>
+    <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a>
+  </nav>
+  <div class="foot-legal"><span>© 2026 PrintSlice</span><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a><a href="/early-access.html">Early access</a><span class="foot-lang" data-lang-slot></span></div>
+</footer>
 
 <script src="/consent.js" defer></script>
 </body></html>

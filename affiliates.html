@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<script src="/i18n.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Affiliates — PrintSlice</title>
+<meta name="description" content="Earn 30% of every payment for 12 months by sharing PrintSlice with your 3D printing audience. Your followers get 50% off their first month.">
+<link rel="icon" href="/logo-icon.png" type="image/png">
+<meta name="theme-color" content="#0c1117">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<script>document.documentElement.classList.add('js')</script>
+<style>
+  .deal{ margin-top:clamp(48px, 6vw, 80px); }
+  .deal .fig-value{ font-size:var(--step-head); }
+  .deal span:last-child{ display:block; margin-top:12px; max-width:24ch; color:var(--muted); font-size:var(--step-small); }
+  #terms{ scroll-margin-top:24px; }
+  .terms{ margin:0; padding-left:1.25em; border-top:1px solid var(--ink); padding-top:20px; }
+  code{ font-family:ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:.88em; background:var(--surface); padding:1px 6px; border-radius:var(--radius); }
+  .sent{ border-top:2px solid var(--ok); padding:16px 0 0; margin-bottom:28px; color:var(--ok); font-weight:500; }
+  .hidden{ display:none; }
+  .form-sheet .check{ margin-top:24px; }
+  @media (max-width: 760px){ .deal .fig-value{ font-size:2.5rem; text-align:left; } .deal > div{ display:block; } .deal span:last-child{ margin-top:6px; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="mast">
+  <a class="wordmark" href="/" aria-label="PrintSlice home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><rect x="21.5" y="2" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="2" y="21.5" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="21.5" y="21.5" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><path d="M20 1.5v37M1.5 20h37" stroke="#2c5682" stroke-width="1.1" stroke-linecap="round"/><rect x="15.6" y="15.6" width="8.8" height="8.8" rx="1.5" transform="rotate(45 20 20)" fill="#4a90d9" stroke="#1a344e" stroke-width=".5"/></svg><span>PrintSlice</span></a>
+  <nav class="mast-nav" aria-label="Main">
+    <a href="/printer-bed-sizes.html">Printer guides</a>
+    <a href="/help.html">Help</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/app.html?login=1">Log In</a>
+  </nav>
+  <a class="button small" href="/app.html">Start Free Trial</a>
+</header>
+
+<main id="main">
+  <div class="head">
+    <p class="label" data-rise>Affiliate programme</p>
+    <h1 class="display" data-rise style="--i:1">Share PrintSlice, earn every month</h1>
+    <p class="lede" data-rise style="--i:2">Make 3D printing videos or posts? Show your audience how to print models bigger than their bed, and earn a share of every payment from the people you send.</p>
+
+    <div class="figures deal" data-rise style="--i:3">
+      <div><b class="fig-value">30%</b><span>of every payment your referrals make, for their first 12 months</span></div>
+      <div><b class="fig-value">50% off</b><span>your followers' first month, with your own code</span></div>
+      <div><b class="fig-value">Monthly</b><span>payouts by PayPal or bank transfer</span></div>
+    </div>
+  </div>
+
+  <section class="sect" aria-labelledby="how-h">
+    <h2 class="sect-h display" id="how-h">How it works</h2>
+    <div class="sect-body">
+      <ol class="steps">
+        <li><span>Apply below. We'll reply within a few days with your code, for example <code>MAKERJOE</code>.</span></li>
+        <li><span>Share your link, <code>printslice.co.uk/r/MAKERJOE</code>, or tell people to enter your code at checkout. The link applies the discount automatically.</span></li>
+        <li><span>Your followers try PrintSlice free, then start a 7-day free trial when they want to download. Once they're paying, you earn 30% of each payment for a year.</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="sect" aria-labelledby="apply-h">
+    <h2 class="sect-h display" id="apply-h">Apply</h2>
+    <div class="sect-body">
+      <div class="sent hidden" id="sent" role="status">Thanks — your application is in. We'll be in touch by email within a few days.</div>
+      <form class="form-sheet" name="affiliate-apply" method="POST" action="/affiliates.html?sent=1" data-netlify="true" netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="affiliate-apply">
+        <p class="hidden"><label>Leave this empty <input name="bot-field"></label></p>
+        <div class="pair">
+          <div>
+            <label class="field-label" for="aName">Your name</label>
+            <input class="input" id="aName" name="name" required autocomplete="name">
+          </div>
+          <div>
+            <label class="field-label" for="aEmail">Email</label>
+            <input class="input" id="aEmail" name="email" type="email" required autocomplete="email">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="aChannel">Link to your channel or profile</label>
+          <input class="input" id="aChannel" name="channel" type="url" required placeholder="https://">
+        </div>
+        <div class="pair" style="margin-top:22px;">
+          <div>
+            <label class="field-label" for="aPlatform">Main platform</label>
+            <select class="input" id="aPlatform" name="platform">
+              <option>YouTube</option><option>TikTok</option><option>Instagram</option><option>Reddit</option>
+              <option>Website or blog</option><option>Discord</option><option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="aSize">Roughly how many followers?</label>
+            <select class="input" id="aSize" name="audience">
+              <option>Under 1,000</option><option>1,000 – 10,000</option><option>10,000 – 50,000</option><option>50,000+</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="aCode">Code you'd like (letters and numbers, 3–16)</label>
+          <input class="input" id="aCode" name="code" pattern="[A-Za-z0-9]{3,16}" placeholder="MAKERJOE">
+        </div>
+        <div class="field">
+          <label class="field-label" for="aHow">How would you share PrintSlice?</label>
+          <textarea class="input" id="aHow" name="plan" placeholder="e.g. a build video of a big helmet, split with PrintSlice"></textarea>
+        </div>
+        <label class="check"><input type="checkbox" name="agree" required> I'm 18 or over and I agree to the affiliate terms below.</label>
+        <button class="button" type="submit">Apply</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="sect" id="terms" aria-labelledby="terms-h">
+    <h2 class="sect-h display" id="terms-h">Affiliate terms</h2>
+    <div class="sect-body legal">
+      <ul class="terms">
+        <li><b>Commission:</b> 30% of each payment (excluding VAT and refunds) made by a customer who used your link or code, for 12 months from their first payment.</li>
+        <li><b>Payouts:</b> monthly, by PayPal or bank transfer, once you've earned at least £10. Smaller amounts roll over to the next month.</li>
+        <li><b>Refunds and chargebacks:</b> no commission is due on payments that are refunded or disputed, and commission already paid on them may be deducted from future payouts.</li>
+        <li><b>Disclose it:</b> mark your posts as an ad or affiliate link (for example #ad), as UK advertising rules require.</li>
+        <li><b>Be accurate:</b> no false or exaggerated claims, no spam, and no paid search ads bidding on "PrintSlice". Don't post your code on coupon or voucher sites.</li>
+        <li><b>No self-referrals:</b> you can't earn commission on your own account or accounts you control.</li>
+        <li><b>Changes:</b> we may change or end the programme, or remove an affiliate who breaks these terms, with notice by email. Commission you've already earned under these terms will still be paid.</li>
+        <li>These terms sit alongside our <a href="/terms.html">Terms &amp; Conditions</a>. Questions? <a href="/contact.html">Contact us</a>.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="foot-close">
+    <p class="foot-line display">Stop designing around your bed size.</p>
+    <a class="button" href="/app.html">Start Free Trial</a>
+  </div>
+  <nav class="foot-nav" aria-label="Footer">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/printer-bed-sizes.html">Printer guides</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/help.html">Help</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/affiliates.html">Affiliates</a>
+    <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a>
+  </nav>
+  <div class="foot-legal"><span>© 2026 PrintSlice</span><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a><a href="/early-access.html">Early access</a><span class="foot-lang" data-lang-slot></span></div>
+</footer>
+<script>
+  if (new URLSearchParams(location.search).get("sent") === "1"){
+    document.getElementById("sent").classList.remove("hidden");
+    document.getElementById("sent").scrollIntoView({ block: "center" });
+  }
+</script>
+<script src="/consent.js" defer></script>
+</body></html>

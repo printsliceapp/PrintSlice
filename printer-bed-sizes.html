@@ -17,6 +17,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="PrintSlice: a model split into four pieces that fit a printer bed">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0c1117">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
 <link rel="icon" href="/favicon-96.png" sizes="96x96" type="image/png">
@@ -70,326 +71,288 @@
  ]
 }
 </script>
-
-<style>
-  :root{
-    --accent:#124559; --accent-hover:#0d3546; --accent-soft:rgba(18,69,89,.14);
-    --ink:#01161e; --ink-soft:#3d5560; --ink-faint:#6b8791;
-    --bg:#e3ecda; --paper:#f8fbf0; --paper-soft:#dbe6d1;
-    --line:rgba(1,22,30,.13); --line-strong:rgba(1,22,30,.24);
-    --radius:5px; --radius-lg:9px;
-    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin:0; padding:0; }
-  body{
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-    color:var(--ink);
-    background:var(--bg);
-    min-height:100vh;
-  }
-  a{ color:var(--accent-hover); }
-  a:hover{ color:var(--accent); }
-  .wrap{ max-width:760px; margin:0 auto; padding:32px 20px 80px; }
-  .nav{ display:flex; align-items:center; flex-wrap:wrap; row-gap:10px; margin-bottom:40px; }
-  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink); }
-  .brand-icon{
-    width:32px; height:32px; flex:none;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .brand-name{ font-weight:800; font-size:14px; letter-spacing:.06em; text-transform:uppercase; }
-  .nav-links{ display:flex; flex-wrap:wrap; flex-basis:100%; justify-content:flex-end; gap:8px 16px; font-size:12px; }
-  .nav-links a{ color:var(--ink-soft); text-decoration:none; font-weight:700; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
-  .nav-links a:hover{ color:var(--ink); }
-  .crumbs{ font-size:12.5px; color:var(--ink-faint); margin:0 0 14px; }
-  .crumbs a{ color:var(--ink-faint); }
-  h1{ font-size:30px; margin:0 0 14px; letter-spacing:-.01em; line-height:1.2; }
-  h2{ font-size:20px; margin:44px 0 14px; letter-spacing:-.005em; }
-  p, li{ font-size:15px; color:var(--ink-soft); line-height:1.65; }
-  p b, li b{ color:var(--ink); }
-  .lede{ font-size:16px; margin:0 0 22px; }
-  .cta-box{
-    border:1px solid var(--line-strong); border-radius:var(--radius-lg); background:var(--paper);
-    padding:20px 22px; margin:0 0 10px; box-shadow:0 16px 34px -26px rgba(1,22,30,.28);
-    display:flex; flex-wrap:wrap; align-items:center; gap:12px 20px;
-  }
-  .cta-box p{ margin:0; font-size:13.5px; flex:1 1 220px; }
-  .btn{
-    display:inline-block; background:var(--accent); color:var(--paper); text-decoration:none;
-    font-weight:700; font-size:14px; padding:12px 18px; border-radius:var(--radius);
-  }
-  .btn:hover{ background:var(--accent-hover); color:var(--paper); }
-  .stat-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin:0 0 26px; }
-  .stat{ border:1px solid var(--line); border-radius:var(--radius-lg); background:var(--paper); padding:14px 16px; }
-  .stat-label{ font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); }
-  .stat-value{ font-family:var(--mono); font-size:16px; font-weight:700; color:var(--ink); margin-top:4px; }
-  ol.steps{ padding-left:22px; margin:0; }
-  ol.steps li{ margin-bottom:8px; }
-  .tip{ border-left:3px solid var(--accent); padding:2px 0 2px 16px; margin:0 0 18px; }
-  .tip h3{ font-size:15.5px; margin:0 0 4px; color:var(--ink); }
-  .tip p{ margin:0; font-size:14.5px; }
-  .table-scroll{ overflow-x:auto; border:1px solid var(--line-strong); border-radius:var(--radius-lg); background:var(--paper); }
-  table{ border-collapse:collapse; width:100%; font-size:14px; }
-  th, td{ text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
-  tr:last-child td{ border-bottom:none; }
-  th{ font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); background:var(--paper-soft); }
-  td{ color:var(--ink-soft); }
-  td.num{ font-family:var(--mono); white-space:nowrap; color:var(--ink); }
-  td a{ white-space:nowrap; }
-  .note{ font-size:13px; color:var(--ink-faint); }
-  .faq-item{
-    border:1px solid var(--line-strong); border-radius:var(--radius-lg); background:var(--paper);
-    padding:20px 22px; margin-bottom:14px; box-shadow:0 16px 34px -26px rgba(1,22,30,.28);
-  }
-  .faq-item h3{ font-size:16.5px; margin:0 0 9px; color:var(--ink); }
-  .faq-item p{ font-size:14px; line-height:1.65; margin:0; }
-  .related{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:18px 24px; }
-  .related h3{ font-size:11.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 8px; }
-  .related ul{ list-style:none; padding:0; margin:0; }
-  .related li{ font-size:14.5px; margin:0 0 6px; }
-  footer{ margin-top:48px; text-align:center; font-size:13px; color:var(--ink-faint); }
-  footer a{ color:var(--ink-faint); }
-  @media (max-width: 600px){
-    h1{ font-size:25px; }
-    /* table rows become small cards so no column hides off-screen */
-    .table-scroll{ border:none; background:none; overflow:visible; }
-    thead{ display:none; }
-    table, tbody, tr, td{ display:block; width:100%; }
-    tr{ border:1px solid var(--line-strong); border-radius:var(--radius-lg); background:var(--paper); padding:12px 14px; margin-bottom:10px; }
-    td{ border:none; padding:3px 0; font-size:13.5px; }
-    td.printer{ font-weight:700; font-size:14.5px; padding-bottom:6px; }
-    td.num{ display:flex; justify-content:space-between; gap:12px; }
-    td.num::before{ content:attr(data-label); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color:var(--ink-faint); }
-    td.go{ padding-top:6px; }
-  }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<script>document.documentElement.classList.add('js')</script>
 </head>
 <body>
-<div class="wrap">
-  <div class="nav">
-    <a class="brand" href="/">
-      <div class="brand-icon">
-        <img src="/logo-icon.png" alt="PrintSlice logo" width="24" height="24">
-      </div>
-      <span class="brand-name">PrintSlice</span>
-    </a>
-    <div class="nav-links">
-      <a href="/app.html?login=1">Log In</a>
-      <a href="/printer-bed-sizes.html">Printer guides</a>
-      <a href="/help.html">Help</a>
-      <a href="/contact.html">Contact</a>
-      <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a>
+<a class="skip" href="#main">Skip to content</a>
+<header class="mast">
+  <a class="wordmark" href="/" aria-label="PrintSlice home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><rect x="21.5" y="2" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="2" y="21.5" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="21.5" y="21.5" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><path d="M20 1.5v37M1.5 20h37" stroke="#2c5682" stroke-width="1.1" stroke-linecap="round"/><rect x="15.6" y="15.6" width="8.8" height="8.8" rx="1.5" transform="rotate(45 20 20)" fill="#4a90d9" stroke="#1a344e" stroke-width=".5"/></svg><span>PrintSlice</span></a>
+  <nav class="mast-nav" aria-label="Main">
+    <a href="/printer-bed-sizes.html" aria-current="page">Printer guides</a>
+    <a href="/help.html">Help</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/app.html?login=1">Log In</a>
+  </nav>
+  <a class="button small" href="/app.html">Start Free Trial</a>
+</header>
+
+<main id="main">
+  <div class="head with-plate">
+    <div>
+      <h1 class="display" data-rise>3D printer bed sizes, and the largest piece you can print</h1>
+      <p class="lede" data-rise style="--i:1">The build volume of popular 3D printers, with the largest single piece PrintSlice makes for each one at default settings. If your model is bigger than your bed, PrintSlice splits it into pieces this size or smaller and adds connectors so they fit back together.</p>
     </div>
+    <figure class="plate" data-rise style="--i:2">
+      <svg viewBox="0 0 480 360" role="img" aria-label="The bed of every printer on this page drawn to the same scale, from 180 mm up to 420 mm square"><rect x="28" y="200.7" width="124.3" height="124.3" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect x="28" y="148.2" width="176.8" height="176.8" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect x="28" y="104" width="224.4" height="221" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect x="28" y="104" width="207.1" height="221" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect x="28" y="173.1" width="151.9" height="151.9" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect x="28" y="117.9" width="207.1" height="207.1" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect x="28" y="83.3" width="241.7" height="241.7" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect x="28" y="180" width="172.6" height="145" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect x="28" y="173.1" width="172.6" height="151.9" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect x="28" y="169.6" width="155.4" height="155.4" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect x="28" y="35" width="290" height="290" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect x="28" y="152.4" width="172.6" height="172.6" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect x="28" y="148.9" width="176.1" height="176.1" fill="none" stroke="#e8eef6" stroke-opacity=".22" stroke-width="1"/><rect x="28" y="200.7" width="124.3" height="124.3" fill="none" stroke="#4a90d9" stroke-width="1.5"/><path d="M152.3 200.7H334" stroke="#4a90d9" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2 3"/><text x="340" y="204.7" fill="#e8eef6" font-size="12">180 mm <tspan fill-opacity=".62">A1 mini</tspan></text><rect x="28" y="173.1" width="151.9" height="151.9" fill="none" stroke="#4a90d9" stroke-width="1.5"/><path d="M179.9 173.1H334" stroke="#4a90d9" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2 3"/><text x="340" y="177.1" fill="#e8eef6" font-size="12">220 mm <tspan fill-opacity=".62">Ender 3</tspan></text><rect x="28" y="148.2" width="176.8" height="176.8" fill="none" stroke="#4a90d9" stroke-width="1.5"/><path d="M204.8 148.2H334" stroke="#4a90d9" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2 3"/><text x="340" y="152.2" fill="#e8eef6" font-size="12">256 mm <tspan fill-opacity=".62">A1, P1S</tspan></text><rect x="28" y="117.9" width="207.1" height="207.1" fill="none" stroke="#4a90d9" stroke-width="1.5"/><path d="M235.1 117.9H334" stroke="#4a90d9" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2 3"/><text x="340" y="121.9" fill="#e8eef6" font-size="12">300 mm <tspan fill-opacity=".62">K1 Max</tspan></text><rect x="28" y="83.3" width="241.7" height="241.7" fill="none" stroke="#4a90d9" stroke-width="1.5"/><path d="M269.7 83.3H334" stroke="#4a90d9" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2 3"/><text x="340" y="87.3" fill="#e8eef6" font-size="12">350 mm <tspan fill-opacity=".62">K2 Plus</tspan></text><rect x="28" y="35" width="290" height="290" fill="none" stroke="#4a90d9" stroke-width="1.5"/><path d="M318 35H334" stroke="#4a90d9" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2 3"/><text x="340" y="39" fill="#e8eef6" font-size="12">420 mm <tspan fill-opacity=".62">Kobra 3 Max</tspan></text></svg>
+      <figcaption><span>Every bed on this page, to one scale</span><span>Front-left corners lined up</span></figcaption>
+    </figure>
   </div>
 
-  <h1>3D printer bed sizes, and the largest piece you can print</h1>
-  <p class="lede">The build volume of popular 3D printers, with the largest single piece PrintSlice makes for each one at default settings. If your model is bigger than your bed, PrintSlice splits it into pieces this size or smaller and adds connectors so they fit back together.</p>
-
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th>Printer</th><th>Build volume (mm)</th><th>Largest piece (mm)</th><th></th></tr></thead>
+  <div class="beds-table" data-rise style="--i:2">
+    <table class="table">
+      <thead><tr><th><span class="sr">Bed to scale</span></th><th>Printer</th><th>Build volume (mm)</th><th>Largest piece (mm)</th><th><span class="sr">Open PrintSlice</span></th></tr></thead>
       <tbody>
-      <tr>
-        <td class="printer"><a href="/split-stl-bambu-a1-mini.html">Bambu Lab A1 mini</a></td>
-        <td class="num" data-label="Build volume">180 × 180 × 180</td>
-        <td class="num" data-label="Largest piece">168 × 168 × 168</td>
-        <td class="go"><a href="/app.html?bed=180x180x180">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-bambu-a1.html">Bambu Lab A1</a></td>
-        <td class="num" data-label="Build volume">256 × 256 × 256</td>
-        <td class="num" data-label="Largest piece">244 × 244 × 244</td>
-        <td class="go"><a href="/app.html?bed=256x256x256">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-bambu-p1s.html">Bambu Lab P1S / P1P / X1 Carbon</a></td>
-        <td class="num" data-label="Build volume">256 × 256 × 256</td>
-        <td class="num" data-label="Largest piece">244 × 244 × 244</td>
-        <td class="go"><a href="/app.html?bed=256x256x256">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-bambu-h2d.html">Bambu Lab H2D (single nozzle)</a></td>
-        <td class="num" data-label="Build volume">325 × 320 × 325</td>
-        <td class="num" data-label="Largest piece">313 × 308 × 313</td>
-        <td class="go"><a href="/app.html?bed=325x320x325">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-bambu-h2d.html">Bambu Lab H2D (both nozzles)</a></td>
-        <td class="num" data-label="Build volume">300 × 320 × 325</td>
-        <td class="num" data-label="Largest piece">288 × 308 × 313</td>
-        <td class="go"><a href="/app.html?bed=300x320x325">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-ender-3.html">Creality Ender 3 / Pro / V2 / V3 SE</a></td>
-        <td class="num" data-label="Build volume">220 × 220 × 250</td>
-        <td class="num" data-label="Largest piece">208 × 208 × 238</td>
-        <td class="go"><a href="/app.html?bed=220x220x250">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-ender-3.html">Creality Ender 3 S1</a></td>
-        <td class="num" data-label="Build volume">220 × 220 × 270</td>
-        <td class="num" data-label="Largest piece">208 × 208 × 258</td>
-        <td class="go"><a href="/app.html?bed=220x220x270">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-creality-k1c.html">Creality K1 / K1C</a></td>
-        <td class="num" data-label="Build volume">220 × 220 × 250</td>
-        <td class="num" data-label="Largest piece">208 × 208 × 238</td>
-        <td class="go"><a href="/app.html?bed=220x220x250">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-creality-k1-max.html">Creality K1 Max</a></td>
-        <td class="num" data-label="Build volume">300 × 300 × 300</td>
-        <td class="num" data-label="Largest piece">288 × 288 × 288</td>
-        <td class="go"><a href="/app.html?bed=300x300x300">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-creality-k2-plus.html">Creality K2 Plus</a></td>
-        <td class="num" data-label="Build volume">350 × 350 × 350</td>
-        <td class="num" data-label="Largest piece">338 × 338 × 338</td>
-        <td class="go"><a href="/app.html?bed=350x350x350">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-prusa-mk4.html">Original Prusa MK4 / MK4S</a></td>
-        <td class="num" data-label="Build volume">250 × 210 × 220</td>
-        <td class="num" data-label="Largest piece">238 × 198 × 208</td>
-        <td class="go"><a href="/app.html?bed=250x210x220">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-prusa-mini.html">Original Prusa MINI+</a></td>
-        <td class="num" data-label="Build volume">180 × 180 × 180</td>
-        <td class="num" data-label="Largest piece">168 × 168 × 168</td>
-        <td class="go"><a href="/app.html?bed=180x180x180">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-prusa-core-one.html">Prusa CORE One / CORE One+</a></td>
-        <td class="num" data-label="Build volume">250 × 220 × 270</td>
-        <td class="num" data-label="Largest piece">238 × 208 × 258</td>
-        <td class="go"><a href="/app.html?bed=250x220x270">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-elegoo-neptune-4-pro.html">Elegoo Neptune 4 Pro</a></td>
-        <td class="num" data-label="Build volume">225 × 225 × 265</td>
-        <td class="num" data-label="Largest piece">213 × 213 × 253</td>
-        <td class="go"><a href="/app.html?bed=225x225x265">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer">Elegoo Neptune 4 Max</td>
-        <td class="num" data-label="Build volume">420 × 420 × 480</td>
-        <td class="num" data-label="Largest piece">408 × 408 × 468</td>
-        <td class="go"><a href="/app.html?bed=420x420x480">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-elegoo-centauri-carbon.html">Elegoo Centauri Carbon</a></td>
-        <td class="num" data-label="Build volume">256 × 256 × 256</td>
-        <td class="num" data-label="Largest piece">244 × 244 × 244</td>
-        <td class="go"><a href="/app.html?bed=256x256x256">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-anycubic-kobra-3.html">Anycubic Kobra 3</a></td>
-        <td class="num" data-label="Build volume">250 × 250 × 260</td>
-        <td class="num" data-label="Largest piece">238 × 238 × 248</td>
-        <td class="go"><a href="/app.html?bed=250x250x260">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-anycubic-kobra-3.html">Anycubic Kobra 3 V2</a></td>
-        <td class="num" data-label="Build volume">255 × 255 × 260</td>
-        <td class="num" data-label="Largest piece">243 × 243 × 248</td>
-        <td class="go"><a href="/app.html?bed=255x255x260">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer">Anycubic Kobra 3 Max</td>
-        <td class="num" data-label="Build volume">420 × 420 × 500</td>
-        <td class="num" data-label="Largest piece">408 × 408 × 488</td>
-        <td class="go"><a href="/app.html?bed=420x420x500">Split for this bed</a></td>
-      </tr>
-      <tr>
-        <td class="printer"><a href="/split-stl-flashforge-adventurer-5m.html">Flashforge Adventurer 5M</a></td>
-        <td class="num" data-label="Build volume">220 × 220 × 220</td>
-        <td class="num" data-label="Largest piece">208 × 208 × 208</td>
-        <td class="go"><a href="/app.html?bed=220x220x220">Split for this bed</a></td>
-      </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="14.6" y="14.6" width="18.9" height="18.9" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="15.2" y="15.2" width="17.7" height="17.7" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-bambu-a1-mini.html">Bambu Lab A1 mini</a></td>
+          <td class="n" data-label="Build volume">180 × 180 × 180</td>
+          <td class="n" data-label="Largest piece">168 × 168 × 168</td>
+          <td class="go"><a href="/app.html?bed=180x180x180">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="10.6" y="10.6" width="26.8" height="26.8" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="11.2" y="11.2" width="25.6" height="25.6" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-bambu-a1.html">Bambu Lab A1</a></td>
+          <td class="n" data-label="Build volume">256 × 256 × 256</td>
+          <td class="n" data-label="Largest piece">244 × 244 × 244</td>
+          <td class="go"><a href="/app.html?bed=256x256x256">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="10.6" y="10.6" width="26.8" height="26.8" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="11.2" y="11.2" width="25.6" height="25.6" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-bambu-p1s.html">Bambu Lab P1S / P1P / X1 Carbon</a></td>
+          <td class="n" data-label="Build volume">256 × 256 × 256</td>
+          <td class="n" data-label="Largest piece">244 × 244 × 244</td>
+          <td class="go"><a href="/app.html?bed=256x256x256">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="7.2" width="34" height="33.5" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="7.6" y="7.8" width="32.9" height="32.4" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-bambu-h2d.html">Bambu Lab H2D (single nozzle)</a></td>
+          <td class="n" data-label="Build volume">325 × 320 × 325</td>
+          <td class="n" data-label="Largest piece">313 × 308 × 313</td>
+          <td class="go"><a href="/app.html?bed=325x320x325">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="8.3" y="7.2" width="31.4" height="33.5" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="8.9" y="7.8" width="30.3" height="32.4" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-bambu-h2d.html">Bambu Lab H2D (both nozzles)</a></td>
+          <td class="n" data-label="Build volume">300 × 320 × 325</td>
+          <td class="n" data-label="Largest piece">288 × 308 × 313</td>
+          <td class="go"><a href="/app.html?bed=300x320x325">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="12.5" y="12.5" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="13.1" y="13.1" width="21.9" height="21.9" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-ender-3.html">Creality Ender 3 / Pro / V2 / V3 SE</a></td>
+          <td class="n" data-label="Build volume">220 × 220 × 250</td>
+          <td class="n" data-label="Largest piece">208 × 208 × 238</td>
+          <td class="go"><a href="/app.html?bed=220x220x250">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="12.5" y="12.5" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="13.1" y="13.1" width="21.9" height="21.9" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-ender-3.html">Creality Ender 3 S1</a></td>
+          <td class="n" data-label="Build volume">220 × 220 × 270</td>
+          <td class="n" data-label="Largest piece">208 × 208 × 258</td>
+          <td class="go"><a href="/app.html?bed=220x220x270">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="12.5" y="12.5" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="13.1" y="13.1" width="21.9" height="21.9" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-creality-k1c.html">Creality K1 / K1C</a></td>
+          <td class="n" data-label="Build volume">220 × 220 × 250</td>
+          <td class="n" data-label="Largest piece">208 × 208 × 238</td>
+          <td class="go"><a href="/app.html?bed=220x220x250">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="8.3" y="8.3" width="31.4" height="31.4" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="8.9" y="8.9" width="30.3" height="30.3" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-creality-k1-max.html">Creality K1 Max</a></td>
+          <td class="n" data-label="Build volume">300 × 300 × 300</td>
+          <td class="n" data-label="Largest piece">288 × 288 × 288</td>
+          <td class="go"><a href="/app.html?bed=300x300x300">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="5.7" y="5.7" width="36.7" height="36.7" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="6.3" y="6.3" width="35.5" height="35.5" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-creality-k2-plus.html">Creality K2 Plus</a></td>
+          <td class="n" data-label="Build volume">350 × 350 × 350</td>
+          <td class="n" data-label="Largest piece">338 × 338 × 338</td>
+          <td class="go"><a href="/app.html?bed=350x350x350">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="10.9" y="13" width="26.2" height="22" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="11.5" y="13.6" width="25" height="20.8" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-prusa-mk4.html">Original Prusa MK4 / MK4S</a></td>
+          <td class="n" data-label="Build volume">250 × 210 × 220</td>
+          <td class="n" data-label="Largest piece">238 × 198 × 208</td>
+          <td class="go"><a href="/app.html?bed=250x210x220">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="14.6" y="14.6" width="18.9" height="18.9" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="15.2" y="15.2" width="17.7" height="17.7" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-prusa-mini.html">Original Prusa MINI+</a></td>
+          <td class="n" data-label="Build volume">180 × 180 × 180</td>
+          <td class="n" data-label="Largest piece">168 × 168 × 168</td>
+          <td class="go"><a href="/app.html?bed=180x180x180">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="10.9" y="12.5" width="26.2" height="23" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="11.5" y="13.1" width="25" height="21.9" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-prusa-core-one.html">Prusa CORE One / CORE One+</a></td>
+          <td class="n" data-label="Build volume">250 × 220 × 270</td>
+          <td class="n" data-label="Largest piece">238 × 208 × 258</td>
+          <td class="go"><a href="/app.html?bed=250x220x270">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="12.2" y="12.2" width="23.6" height="23.6" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="12.8" y="12.8" width="22.4" height="22.4" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-elegoo-neptune-4-pro.html">Elegoo Neptune 4 Pro</a></td>
+          <td class="n" data-label="Build volume">225 × 225 × 265</td>
+          <td class="n" data-label="Largest piece">213 × 213 × 253</td>
+          <td class="go"><a href="/app.html?bed=225x225x265">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="2" y="2" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="2.6" y="2.6" width="42.8" height="42.8" fill="#4e5f76"/></svg></td>
+          <td class="printer">Elegoo Neptune 4 Max</td>
+          <td class="n" data-label="Build volume">420 × 420 × 480</td>
+          <td class="n" data-label="Largest piece">408 × 408 × 468</td>
+          <td class="go"><a href="/app.html?bed=420x420x480">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="10.6" y="10.6" width="26.8" height="26.8" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="11.2" y="11.2" width="25.6" height="25.6" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-elegoo-centauri-carbon.html">Elegoo Centauri Carbon</a></td>
+          <td class="n" data-label="Build volume">256 × 256 × 256</td>
+          <td class="n" data-label="Largest piece">244 × 244 × 244</td>
+          <td class="go"><a href="/app.html?bed=256x256x256">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="10.9" y="10.9" width="26.2" height="26.2" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="11.5" y="11.5" width="25" height="25" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-anycubic-kobra-3.html">Anycubic Kobra 3</a></td>
+          <td class="n" data-label="Build volume">250 × 250 × 260</td>
+          <td class="n" data-label="Largest piece">238 × 238 × 248</td>
+          <td class="go"><a href="/app.html?bed=250x250x260">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="10.6" y="10.6" width="26.7" height="26.7" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="11.2" y="11.2" width="25.5" height="25.5" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-anycubic-kobra-3.html">Anycubic Kobra 3 V2</a></td>
+          <td class="n" data-label="Build volume">255 × 255 × 260</td>
+          <td class="n" data-label="Largest piece">243 × 243 × 248</td>
+          <td class="go"><a href="/app.html?bed=255x255x260">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="2" y="2" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="2.6" y="2.6" width="42.8" height="42.8" fill="#4e5f76"/></svg></td>
+          <td class="printer">Anycubic Kobra 3 Max</td>
+          <td class="n" data-label="Build volume">420 × 420 × 500</td>
+          <td class="n" data-label="Largest piece">408 × 408 × 488</td>
+          <td class="go"><a href="/app.html?bed=420x420x500">Split for this bed</a></td>
+        </tr>
+        <tr>
+          <td class="fp"><svg class="foot-print" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><rect x="12.5" y="12.5" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/><rect x="13.1" y="13.1" width="21.9" height="21.9" fill="#4e5f76"/></svg></td>
+          <td class="printer"><a href="/split-stl-flashforge-adventurer-5m.html">Flashforge Adventurer 5M</a></td>
+          <td class="n" data-label="Build volume">220 × 220 × 220</td>
+          <td class="n" data-label="Largest piece">208 × 208 × 208</td>
+          <td class="go"><a href="/app.html?bed=220x220x220">Split for this bed</a></td>
+        </tr>
       </tbody>
     </table>
-  </div>
-  <p class="note">Build volumes are X × Y × Z, from each maker's published specifications (checked October 2026). "Split for this bed" opens PrintSlice with that size filled in.</p>
-
-  <h2>Guides for popular printers</h2>
-  <div class="related">
-    <div>
-      <h3>Bambu Lab</h3>
-      <ul>
-        <li><a href="/split-stl-bambu-a1-mini.html">Bambu Lab A1 mini</a></li>
-        <li><a href="/split-stl-bambu-a1.html">Bambu Lab A1</a></li>
-        <li><a href="/split-stl-bambu-p1s.html">Bambu Lab P1S</a></li>
-        <li><a href="/split-stl-bambu-h2d.html">Bambu Lab H2D</a></li>
-      </ul>
-    </div>
-    <div>
-      <h3>Creality</h3>
-      <ul>
-        <li><a href="/split-stl-ender-3.html">Creality Ender 3</a></li>
-        <li><a href="/split-stl-creality-k1c.html">Creality K1C</a></li>
-        <li><a href="/split-stl-creality-k1-max.html">Creality K1 Max</a></li>
-        <li><a href="/split-stl-creality-k2-plus.html">Creality K2 Plus</a></li>
-      </ul>
-    </div>
-    <div>
-      <h3>Prusa</h3>
-      <ul>
-        <li><a href="/split-stl-prusa-mk4.html">Original Prusa MK4</a></li>
-        <li><a href="/split-stl-prusa-mini.html">Original Prusa MINI+</a></li>
-        <li><a href="/split-stl-prusa-core-one.html">Prusa CORE One</a></li>
-      </ul>
-    </div>
-    <div>
-      <h3>Elegoo</h3>
-      <ul>
-        <li><a href="/split-stl-elegoo-neptune-4-pro.html">Elegoo Neptune 4 Pro</a></li>
-        <li><a href="/split-stl-elegoo-centauri-carbon.html">Elegoo Centauri Carbon</a></li>
-      </ul>
-    </div>
-    <div>
-      <h3>Anycubic</h3>
-      <ul>
-        <li><a href="/split-stl-anycubic-kobra-3.html">Anycubic Kobra 3</a></li>
-      </ul>
-    </div>
-    <div>
-      <h3>Flashforge</h3>
-      <ul>
-        <li><a href="/split-stl-flashforge-adventurer-5m.html">Flashforge Adventurer 5M</a></li>
-      </ul>
-    </div>
+    <p class="table-note">Beds are drawn to one scale, with the largest piece filled in. Build volumes are X × Y × Z, from each maker's published specifications (checked October 2026). "Split for this bed" opens PrintSlice with that size filled in.</p>
   </div>
 
-  <h2>Questions</h2>
-  <div class="faq-item">
-    <h3>What does build volume mean?</h3>
-    <p>It's the largest box your printer can print in one go: X is left to right, Y is front to back and Z is height. Makers also call it the print size or bed size.</p>
-  </div>
-  <div class="faq-item">
-    <h3>Why is the largest piece smaller than the bed?</h3>
-    <p>PrintSlice keeps 5.6 mm clear on every side by default: a 2 mm safety margin you can change, plus 3.6 mm so a connector tab sticking out of a piece still fits on the bed. That's 11.2 mm off each axis in total.</p>
-  </div>
-  <div class="faq-item">
-    <h3>How many pieces will my model need?</h3>
-    <p>Divide each side of your model by your printer's largest piece size, round each answer up, and multiply the three together. For example, a 400 × 200 × 100 mm model on a 220 × 220 × 250 mm bed needs 2 × 1 × 1 = 2 pieces.</p>
-  </div>
-  <div class="faq-item">
-    <h3>What if my printer isn't listed?</h3>
-    <p>Look up its build volume on the maker's spec page, open PrintSlice and type the three numbers into the bed-size fields.</p>
-  </div>
-  <div class="faq-item">
-    <h3>Does PrintSlice cost anything?</h3>
-    <p>Splitting and previewing is free, with no account needed, and your first model is free to download with a free account. To download more models, start a 7-day free trial (a card is needed, but you aren't charged until the 7 days are up and you can cancel before then). After that it's £3.99 a month.</p>
-  </div>
+  <section class="sect" aria-labelledby="guides">
+    <h2 class="sect-h display" id="guides">Guides for popular printers</h2>
+    <div class="sect-body">
+      <div class="related">
+        <div>
+          <h3>Bambu Lab</h3>
+          <ul>
+            <li><a href="/split-stl-bambu-a1-mini.html">Bambu Lab A1 mini</a></li>
+            <li><a href="/split-stl-bambu-a1.html">Bambu Lab A1</a></li>
+            <li><a href="/split-stl-bambu-p1s.html">Bambu Lab P1S</a></li>
+            <li><a href="/split-stl-bambu-h2d.html">Bambu Lab H2D</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Creality</h3>
+          <ul>
+            <li><a href="/split-stl-ender-3.html">Creality Ender 3</a></li>
+            <li><a href="/split-stl-creality-k1c.html">Creality K1C</a></li>
+            <li><a href="/split-stl-creality-k1-max.html">Creality K1 Max</a></li>
+            <li><a href="/split-stl-creality-k2-plus.html">Creality K2 Plus</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Prusa</h3>
+          <ul>
+            <li><a href="/split-stl-prusa-mk4.html">Original Prusa MK4</a></li>
+            <li><a href="/split-stl-prusa-mini.html">Original Prusa MINI+</a></li>
+            <li><a href="/split-stl-prusa-core-one.html">Prusa CORE One</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Elegoo</h3>
+          <ul>
+            <li><a href="/split-stl-elegoo-neptune-4-pro.html">Elegoo Neptune 4 Pro</a></li>
+            <li><a href="/split-stl-elegoo-centauri-carbon.html">Elegoo Centauri Carbon</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Anycubic</h3>
+          <ul>
+            <li><a href="/split-stl-anycubic-kobra-3.html">Anycubic Kobra 3</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Flashforge</h3>
+          <ul>
+            <li><a href="/split-stl-flashforge-adventurer-5m.html">Flashforge Adventurer 5M</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
 
-  <footer>
-    <a href="/">← Back to PrintSlice</a>
-  </footer>
-</div>
+  <section class="sect" aria-labelledby="questions">
+    <h2 class="sect-h display" id="questions">Questions</h2>
+    <div class="sect-body">
+      <div class="entry">
+        <span class="entry-n" aria-hidden="true">1</span>
+        <h3>What does build volume mean?</h3>
+        <p>It's the largest box your printer can print in one go: X is left to right, Y is front to back and Z is height. Makers also call it the print size or bed size.</p>
+      </div>
+      <div class="entry">
+        <span class="entry-n" aria-hidden="true">2</span>
+        <h3>Why is the largest piece smaller than the bed?</h3>
+        <p>PrintSlice keeps 5.6 mm clear on every side by default: a 2 mm safety margin you can change, plus 3.6 mm so a connector tab sticking out of a piece still fits on the bed. That's 11.2 mm off each axis in total.</p>
+      </div>
+      <div class="entry">
+        <span class="entry-n" aria-hidden="true">3</span>
+        <h3>How many pieces will my model need?</h3>
+        <p>Divide each side of your model by your printer's largest piece size, round each answer up, and multiply the three together. For example, a 400 × 200 × 100 mm model on a 220 × 220 × 250 mm bed needs 2 × 1 × 1 = 2 pieces.</p>
+      </div>
+      <div class="entry">
+        <span class="entry-n" aria-hidden="true">4</span>
+        <h3>What if my printer isn't listed?</h3>
+        <p>Look up its build volume on the maker's spec page, open PrintSlice and type the three numbers into the bed-size fields.</p>
+      </div>
+      <div class="entry">
+        <span class="entry-n" aria-hidden="true">5</span>
+        <h3>Does PrintSlice cost anything?</h3>
+        <p>Splitting and previewing is free, with no account needed, and your first model is free to download with a free account. To download more models, start a 7-day free trial (a card is needed, but you aren't charged until the 7 days are up and you can cancel before then). After that it's £3.99 a month.</p>
+      </div>
+    </div>
+  </section>
 
+</main>
+
+<footer class="foot">
+  <div class="foot-close">
+    <p class="foot-line display">Stop designing around your bed size.</p>
+    <a class="button" href="/app.html">Start Free Trial</a>
+  </div>
+  <nav class="foot-nav" aria-label="Footer">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/printer-bed-sizes.html">Printer guides</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/help.html">Help</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/affiliates.html">Affiliates</a>
+    <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a>
+  </nav>
+  <div class="foot-legal"><span>© 2026 PrintSlice</span><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a><a href="/early-access.html">Early access</a><span class="foot-lang" data-lang-slot></span></div>
+</footer>
 
 <script src="/consent.js" defer></script>
 </body></html>

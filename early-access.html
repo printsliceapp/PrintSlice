@@ -29,129 +29,112 @@
 <!-- DO NOT MODIFY UNLESS TO REPLACE A USER IDENTIFIER -->
 <!-- End Reddit Pixel -->
 
+<meta name="theme-color" content="#0c1117">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<script>document.documentElement.classList.add('js')</script>
 <style>
-  :root{
-    --accent:#124559; --accent-hover:#0d3546; --accent-soft:rgba(18,69,89,.14);
-    --ink:#01161e; --ink-soft:#3d5560; --ink-faint:#6b8791;
-    --bg:#e3ecda; --paper:#f8fbf0; --paper-soft:#dbe6d1;
-    --line:rgba(1,22,30,.13); --line-strong:rgba(1,22,30,.24);
-    --ok:#1f8a5f; --bad:#c1372a;
-    --radius:5px; --radius-lg:9px;
-    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  /* The homepage's split stage: words on the left, the moving picture held still on the right. */
+  .ea{ display:grid; grid-template-columns:1fr 1fr; gap:var(--m); padding:var(--m); align-items:start; }
+  .ea-text{ min-width:0; padding:8px calc(var(--pad) - var(--m)) 48px; }
+  .ea .mast{ padding:10px 0 0; grid-template-columns:auto 1fr; }
+  .ea-copy{ margin-top:clamp(56px, 12svh, 152px); }
+  .ea-copy h1{ font-size:var(--step-head); max-width:11ch; }
+  .ea-copy .lede{ margin-top:28px; max-width:30ch; }
+  .ea-cta{ display:flex; align-items:center; flex-wrap:wrap; gap:14px 22px; margin-top:36px; }
+  .ea-cta p{ font-size:var(--step-small); color:var(--muted); }
+  .ea .steps{ margin-top:clamp(56px, 8vw, 96px); max-width:560px; }
+  .small-print{ margin-top:28px; max-width:56ch; font-size:var(--step-small); color:var(--muted); }
+
+  .ea-film{ position:sticky; top:var(--m); height:calc(100svh - 2 * var(--m)); min-height:520px; margin:0; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+  /* The homepage's board, playing its six shots on a loop (story.js, data-story="loop"). */
+  .ea-film .stage{ position:absolute; inset:0 0 56px 0; }
+  .ea-film #field{ position:absolute; inset:0; width:100%; height:100%; opacity:0; transition:opacity 1200ms var(--ease-out); }
+  .ea-film .stage.is-ready #field{ opacity:1; }
+  .ea-film .stage-status{ position:absolute; left:20px; bottom:20px; margin:0; color:var(--muted); transition:opacity 600ms ease; }
+  .ea-film .stage.is-ready .stage-status{ opacity:0; }
+  .ea-film .stage-plan{ position:absolute; inset:0; display:none; place-items:center; margin:0; padding:10%; }
+  .ea-film .stage.no-gl .stage-plan{ display:grid; }
+  .ea-film .stage.no-gl #field{ display:none; }
+  .ea-film .stage-plan svg{ width:100%; height:auto; }
+  .ea-film figcaption{ position:absolute; left:0; right:0; bottom:0; height:56px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:0 20px; background:var(--sheet); font-size:var(--step-small); }
+  .ea-film figcaption span:last-child{ color:var(--muted); }
+
+  @media (max-width: 860px){
+    .ea{ display:flex; flex-direction:column; align-items:stretch; }
+    .ea-text{ display:contents; }
+    .ea .mast{ order:-2; padding:8px 8px 4px; }
+    .ea-film{ order:-1; position:relative; top:0; height:auto; min-height:0; aspect-ratio:1 / 1.02; }
+    .ea-film .stage{ bottom:48px; }
+    .ea-film figcaption{ height:48px; padding:0 16px; }
+    .ea-copy, .ea .steps, .small-print{ padding:0 8px; }
+    .ea-copy{ margin-top:28px; }
+    .ea-cta .button{ width:100%; }
+    .ea .steps{ margin-top:48px; }
+    .small-print{ margin-bottom:24px; }
   }
-  * { box-sizing: border-box; }
-  html, body { margin:0; padding:0; }
-  body{
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-    color:var(--ink);
-    background:var(--bg);
-    min-height:100vh;
-  }
-  a{ color:var(--accent-hover); }
-  a:hover{ color:var(--accent); }
-  .wrap{ max-width:560px; margin:0 auto; padding:32px 20px 80px; }
-  .nav{ display:flex; align-items:center; flex-wrap:wrap; row-gap:10px; margin-bottom:40px; }
-  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink); }
-  .brand-icon{
-    width:32px; height:32px; flex:none;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .brand-name{ font-weight:800; font-size:14px; letter-spacing:.06em; text-transform:uppercase; }
-  .nav-links{ display:flex; flex-wrap:wrap; flex-basis:100%; justify-content:flex-end; gap:8px 16px; font-size:12px; }
-  .nav-links a{ color:var(--ink-soft); text-decoration:none; font-weight:700; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
-  .nav-links a:hover{ color:var(--ink); }
-  .eyebrow-pill{
-    display:inline-flex; align-items:center; gap:8px; background:var(--paper); border:1px solid var(--line-strong);
-    border-radius:999px; padding:6px 14px 6px 10px; font-size:11.5px; font-weight:800; letter-spacing:.08em;
-    text-transform:uppercase; color:var(--ink); margin-bottom:20px; font-family:var(--mono);
-  }
-  .eyebrow-pill .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); flex:none; }
-  h1{ font-size:32px; margin:0 0 12px; letter-spacing:-.015em; }
-  .lede{ color:var(--ink-soft); font-size:15px; margin:0 0 10px; line-height:1.6; }
-  .fine{ color:var(--ink-faint); font-size:13px; margin:0 0 28px; line-height:1.6; }
-  .card{
-    border:1px solid var(--line-strong); border-radius:var(--radius-lg); background:var(--paper);
-    padding:28px 26px; box-shadow:0 26px 54px -30px rgba(1,22,30,.3);
-  }
-  label{ display:block; font-size:11.5px; color:var(--ink-faint); margin-bottom:6px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
-  input{
-    width:100%; padding:11px 13px; border:1px solid var(--line-strong); border-radius:3px;
-    font-size:14px; color:var(--ink); background:var(--paper); margin-bottom:16px;
-    font-family:inherit;
-  }
-  input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
-  button{
-    cursor:pointer; border:none; border-radius:3px; padding:13px 16px;
-    font-size:13.5px; font-weight:800; width:100%; text-transform:uppercase; letter-spacing:.03em;
-    background:var(--ink); color:var(--paper);
-  }
-  button:hover{ background:var(--accent); color:#eff6e0; }
-  button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
-  button:disabled{ opacity:.6; cursor:not-allowed; }
-  .status-msg{ font-size:13.5px; margin-top:14px; text-align:center; }
-  .status-msg.ok{ color:var(--ok); }
-  .status-msg.err{ color:var(--bad); }
-  .perks{ list-style:none; padding:0; margin:0 0 28px; font-size:14.5px; color:var(--ink-soft); }
-  .perks li{ padding:7px 0 7px 24px; position:relative; }
-  .perks li::before{ content:"—"; position:absolute; left:0; color:var(--accent-hover); font-weight:800; }
-  .demo{ border:1px solid var(--line-strong); border-radius:var(--radius-lg); overflow:hidden; background:#051820; margin:0 0 22px; box-shadow:0 26px 54px -30px rgba(1,22,30,.35); }
-  .demo video{ display:block; width:100%; height:260px; object-fit:cover; }
-  @media (max-width:480px){ .demo video{ height:200px; } }
-  #startTrialBtn{ padding:16px; font-size:15px; }
-  .how{ list-style:none; counter-reset:how; padding:0; margin:0 0 26px; display:grid; gap:10px; }
-  .how li{ counter-increment:how; display:grid; grid-template-columns:30px 1fr; column-gap:12px; align-items:start;
-    background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); padding:12px 14px; }
-  .how li::before{ content:counter(how); grid-row:span 2; width:26px; height:26px; border-radius:50%; background:var(--ink); color:var(--paper);
-    display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:800; }
-  .how b{ font-size:14.5px; }
-  .how span{ font-size:13px; color:var(--ink-soft); }
-  .small-print{ font-size:12px; color:var(--ink-faint); line-height:1.6; margin:0; text-align:center; }
-  footer{ margin-top:48px; text-align:center; font-size:13px; color:var(--ink-faint); }
-  footer a{ color:var(--ink-faint); }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="nav">
-    <a class="brand" href="/">
-      <div class="brand-icon">
-        <img src="/logo-icon.png" alt="PrintSlice logo" width="24" height="24">
+<a class="skip" href="#main">Skip to content</a>
+<div class="ea">
+  <div class="ea-text">
+    <header class="mast">
+      <a class="wordmark" href="/" aria-label="PrintSlice home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><rect x="21.5" y="2" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="2" y="21.5" width="16.5" height="16.5" rx="3" fill="#2c3849"/><rect x="21.5" y="21.5" width="16.5" height="16.5" rx="3" fill="#4e5f76"/><path d="M20 1.5v37M1.5 20h37" stroke="#2c5682" stroke-width="1.1" stroke-linecap="round"/><rect x="15.6" y="15.6" width="8.8" height="8.8" rx="1.5" transform="rotate(45 20 20)" fill="#4a90d9" stroke="#1a344e" stroke-width=".5"/></svg><span>PrintSlice</span></a>
+      <nav class="mast-nav" aria-label="Main">
+        <a href="/help.html">Help</a>
+        <a href="/contact.html">Contact</a>
+        <a href="/app.html?login=1">Log In</a>
+      </nav>
+    </header>
+
+    <main id="main" class="ea-copy">
+      <p class="label" data-rise>Free to try — no card</p>
+      <h1 class="display" data-rise style="--i:1">Print models bigger than your bed</h1>
+      <p class="lede" data-rise style="--i:2">Drop in an STL and PrintSlice cuts it into pieces that fit your printer — with snap-fit joints so they click back together.</p>
+      <div class="ea-cta" data-rise style="--i:3">
+        <button class="button" type="button" id="startTrialBtn">Try it free</button>
+        <p>No account or card needed to try it.</p>
       </div>
-      <span class="brand-name">PrintSlice</span>
-    </a>
-    <div class="nav-links">
-      <a href="/app.html?login=1">Log In</a>
-      <a href="/help.html">Help</a>
-      <a href="/contact.html">Contact</a>
-      <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a>
-      <a href="/terms.html">Terms</a>
-      <a href="/privacy.html">Privacy</a>
+    </main>
+
+    <ol class="steps" data-rise style="--i:4">
+      <li><b>Load your STL</b><span>Or try our sample model if you don't have one handy.</span></li>
+      <li><b>Enter your bed size</b><span>The size of your printer's build plate, in mm.</span></li>
+      <li><b>Split &amp; download</b><span>Get print-ready pieces, joints included.</span></li>
+    </ol>
+
+    <p class="small-print">Your first model is free to download: just create an account, no card needed. To download more, start a 7-day free trial: you'll add a card then, but you won't be charged until day 7, and you pay nothing if you cancel before. After that it's £3.99/month, cancel anytime.</p>
+  </div>
+
+  <figure class="ea-film" data-story="loop" aria-label="PrintSlice splitting a 3D model into bed-sized pieces">
+    <div class="stage">
+      <canvas id="field" aria-hidden="true"></canvas>
+      <div class="stage-plan" aria-hidden="true"><svg viewBox="0 0 400 400"><g fill="none" stroke="#4a90d9" stroke-width="1.2" opacity=".85"><rect x="14" y="14" width="180" height="180"/><rect x="206" y="14" width="180" height="180"/><rect x="14" y="206" width="180" height="180"/><rect x="206" y="206" width="180" height="180"/></g><rect x="28" y="28" width="152" height="152" rx="24" fill="#4e5f76"/><rect x="220" y="28" width="152" height="152" rx="24" fill="#2c3849"/><rect x="28" y="220" width="152" height="152" rx="24" fill="#2c3849"/><rect x="220" y="220" width="152" height="152" rx="24" fill="#4e5f76"/><path d="M200 6v388M6 200h388" stroke="#2c5682" stroke-width="2"/><rect x="176" y="176" width="48" height="48" rx="6" transform="rotate(45 200 200)" fill="#4a90d9" stroke="#1a344e" stroke-width="2"/></svg></div>
+      <p class="stage-status mono" aria-hidden="true">Loading the model</p>
     </div>
-  </div>
-
-  <div class="eyebrow-pill"><span class="dot"></span>Free to try — no card</div>
-  <h1>Print models bigger than your bed</h1>
-  <p class="lede">Drop in an STL and PrintSlice cuts it into pieces that fit your printer — with snap-fit joints so they click back together.</p>
-
-  <button type="button" id="startTrialBtn">Try it free</button>
-  <p class="fine" style="text-align:center; margin:10px 0 22px;">No account or card needed to try it.</p>
-
-  <div class="demo">
-    <video src="/hero-3d.mp4" autoplay loop muted playsinline aria-label="PrintSlice splitting a 3D model into bed-sized pieces"></video>
-  </div>
-
-  <ol class="how">
-    <li><b>Load your STL</b><span>Or try our sample model if you don't have one handy.</span></li>
-    <li><b>Enter your bed size</b><span>The size of your printer's build plate, in mm.</span></li>
-    <li><b>Split &amp; download</b><span>Get print-ready pieces, joints included.</span></li>
-  </ol>
-
-  <p class="small-print">Your first model is free to download: just create an account, no card needed. To download more, start a 7-day free trial: you'll add a card then, but you won't be charged until day 7, and you pay nothing if you cancel before. After that it's £3.99/month, cancel anytime.</p>
-
-  <footer>
-    <a href="/">← Back to PrintSlice</a>
-  </footer>
+    <figcaption><span>Nothing is uploaded</span></figcaption>
+  </figure>
 </div>
+
+<footer class="foot" style="margin-top:0;">
+  <div class="foot-close">
+    <p class="foot-line display">Stop designing around your bed size.</p>
+    <a class="button" href="/app.html">Start Free Trial</a>
+  </div>
+  <nav class="foot-nav" aria-label="Footer">
+    <a href="/#how-it-works">How It Works</a>
+    <a href="/printer-bed-sizes.html">Printer guides</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/help.html">Help</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/affiliates.html">Affiliates</a>
+    <a href="https://discord.gg/sn6zAUXvx2" target="_blank" rel="noopener">Community</a>
+  </nav>
+  <div class="foot-legal"><span>© 2026 PrintSlice</span><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a><span class="foot-lang" data-lang-slot></span></div>
+</footer>
 
 <script>
 // Straight into the tool — no account, no card. Both are only asked for when
@@ -166,6 +149,8 @@ document.getElementById('startTrialBtn').addEventListener('click', () => {
   window.location.href = '/app.html';
 });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" defer></script>
+<script src="/story.js" defer></script>
 
 
 <script src="/consent.js" defer></script>
